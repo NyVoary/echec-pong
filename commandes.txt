@@ -1,0 +1,2 @@
+# Executer depuis le jar
+java -jar echec-pong.jar
