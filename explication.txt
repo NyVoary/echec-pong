@@ -1,0 +1,406 @@
+═══════════════════════════════════════════════════════════════════════════════
+    MOUVEMENT DE RAQUETTE : FLUX DÉTAILLÉ CLIENT ↔ SERVEUR
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 1 : JOUEUR APPUIE SUR UNE TOUCHE                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CLIENT (GameFrame.java - setupKeyListeners())
+═══════════════════════════════════════════════════════════════════════════════
+
+    addKeyListener(new KeyAdapter() {
+        @Override
+        public void keyPressed(KeyEvent e) {
+            // Vérifier que le joueur est connecté et a un côté assigné
+            if (!connected || mySide == null) return;
+            
+            // Si je suis le joueur TOP (LEFT)
+            if (mySide.equals("LEFT")) {
+                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                    // 👉 ENVOIE AU SERVEUR
+                    out.println("MOVE:LEFT");
+                } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                    out.println("MOVE:RIGHT");
+                }
+            } 
+            // Si je suis le joueur BOTTOM (RIGHT)
+            else if (mySide.equals("RIGHT")) {
+                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                    out.println("MOVE:LEFT");
+                } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                    out.println("MOVE:RIGHT");
+                }
+            }
+        }
+    });
+
+RÉSUMÉ ÉTAPE 1 :
+├─ Le client NE bouge PAS la raquette lui-même
+├─ Il envoie juste une DEMANDE au serveur : "MOVE:LEFT"
+└─ Le serveur décidera si c'est valide et bougera la raquette
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 2 : SERVEUR REÇOIT LA COMMANDE                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SERVEUR (ClientHandler.java - run())
+═══════════════════════════════════════════════════════════════════════════════
+
+    public void run() {
+        try {
+            // ...connexion initiale...
+            
+            // 🔁 BOUCLE INFINIE qui écoute le client
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) {
+                // 👂 Reçoit "MOVE:LEFT" du client
+                processCommand(inputLine);
+            }
+        } catch (IOException e) {
+            System.out.println("✗ Client déconnecté");
+        }
+    }
+
+SERVEUR (ClientHandler.java - processCommand())
+═══════════════════════════════════════════════════════════════════════════════
+
+    private void processCommand(String command) {
+        // 🔍 Vérifie si c'est une commande de mouvement
+        if (command.startsWith("MOVE:")) {
+            // 📤 Extrait la direction (après les ":")
+            String direction = command.substring(5); // "LEFT" ou "RIGHT"
+            
+            // 🎮 Demande au GameEngine de bouger la raquette
+            // playerSide = "LEFT" ou "RIGHT" (assigné à la connexion)
+            gameEngine.movePaddle(playerSide, direction);
+        }
+    }
+
+RÉSUMÉ ÉTAPE 2 :
+├─ ClientHandler lit en boucle les messages du client
+├─ Détecte "MOVE:LEFT" ou "MOVE:RIGHT"
+├─ Extrait la direction
+└─ Appelle gameEngine.movePaddle(monCôté, direction)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 3 : SERVEUR CALCULE LA NOUVELLE POSITION                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SERVEUR (GameEngine.java - movePaddle())
+═══════════════════════════════════════════════════════════════════════════════
+
+    public synchronized void movePaddle(String side, String direction) {
+        // 🎯 Sélectionne la bonne raquette selon le côté du joueur
+        Paddle paddle = side.equals("LEFT") ? topPaddle : bottomPaddle;
+        
+        // 🏃 Déplace la raquette selon la direction
+        if (direction.equals("LEFT")) {
+            // Exemple : x = 180 → appelle moveLeft(10) → x = 170
+            paddle.moveLeft(GameConfig.NORMAL_SPEED); // NORMAL_SPEED = 10
+        } else if (direction.equals("RIGHT")) {
+            // Exemple : x = 180 → appelle moveRight(10) → x = 190
+            paddle.moveRight(GameConfig.NORMAL_SPEED);
+        }
+        
+        // 📡 IMPORTANT : Diffuse le nouvel état à TOUS les clients
+        broadcastState();
+    }
+
+COMMON (Paddle.java - moveLeft())
+═══════════════════════════════════════════════════════════════════════════════
+
+    public void moveLeft(int speed) {
+        x -= speed;  // Soustrait 10 pixels
+        
+        // 🚫 Empêche de sortir du terrain
+        if (x < 0) {
+            x = 0;
+        }
+    }
+
+    public void moveRight(int speed) {
+        x += speed;  // Ajoute 10 pixels
+        
+        // 🚫 Empêche de sortir du terrain
+        if (x + width > 480) {
+            x = 480 - width;
+        }
+    }
+
+EXEMPLE CONCRET :
+═══════════════════════════════════════════════════════════════════════════════
+
+AVANT :
+    topPaddle.x = 180
+
+ACTION :
+    Joueur LEFT appuie sur ←
+    → "MOVE:LEFT" envoyé
+    → movePaddle("LEFT", "LEFT")
+    → topPaddle.moveLeft(10)
+    → x = 180 - 10 = 170
+
+APRÈS :
+    topPaddle.x = 170
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 4 : SERVEUR DIFFUSE L'ÉTAT À TOUS LES CLIENTS                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SERVEUR (GameEngine.java - broadcastState())
+═══════════════════════════════════════════════════════════════════════════════
+
+    public synchronized void broadcastState() {
+        // 📦 Créé le message avec toutes les positions
+        String state = getGameState();
+        
+        // 📡 Envoie à TOUS les clients connectés
+        for (ClientHandler client : clients) {
+            client.sendMessage(state);
+        }
+    }
+
+    public String getGameState() {
+        // 🔢 Format : "STATE:topX,bottomX,ballX,ballY"
+        return "STATE:" + 
+               topPaddle.getX() + "," +      // Ex: 170
+               bottomPaddle.getX() + "," +   // Ex: 180
+               ball.getX() + "," +           // Ex: 245
+               ball.getY();                  // Ex: 312
+    }
+
+SERVEUR (ClientHandler.java - sendMessage())
+═══════════════════════════════════════════════════════════════════════════════
+
+    public void sendMessage(String message) {
+        // 📤 Envoie via le socket TCP
+        out.println(message);  // Exemple : "STATE:170,180,245,312"
+    }
+
+RÉSUMÉ ÉTAPE 4 :
+├─ GameEngine construit : "STATE:170,180,245,312"
+├─ Envoie ce message à CLIENT 1 (LEFT)
+├─ Envoie ce message à CLIENT 2 (RIGHT)
+└─ Les deux clients reçoivent EXACTEMENT le même état
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 5 : CLIENTS REÇOIVENT ET PARSENT L'ÉTAT                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CLIENT (GameFrame.java - startReceivingThread())
+═══════════════════════════════════════════════════════════════════════════════
+
+    private void startReceivingThread() {
+        new Thread(() -> {
+            try {
+                String message;
+                // 🔁 BOUCLE INFINIE qui écoute le serveur
+                while ((message = in.readLine()) != null) {
+                    // 👂 Reçoit "STATE:170,180,245,312"
+                    processServerMessage(message);
+                }
+            } catch (IOException e) {
+                // Connexion perdue
+            }
+        }).start();
+    }
+
+CLIENT (GameFrame.java - processServerMessage())
+═══════════════════════════════════════════════════════════════════════════════
+
+    private void processServerMessage(String message) {
+        if (message.startsWith("STATE:")) {
+            // 📝 Extrait les données après "STATE:"
+            String[] parts = message.substring(6).split(",");
+            // parts[0] = "170"  (topPaddle.x)
+            // parts[1] = "180"  (bottomPaddle.x)
+            // parts[2] = "245"  (ball.x)
+            // parts[3] = "312"  (ball.y)
+            
+            // 🎯 Met à jour les positions locales
+            topPaddle.setX(Integer.parseInt(parts[0]));     // 170
+            bottomPaddle.setX(Integer.parseInt(parts[1]));  // 180
+            
+            // 🏀 Met à jour la balle
+            if (parts.length >= 4) {
+                ballX = Integer.parseInt(parts[2]);  // 245
+                ballY = Integer.parseInt(parts[3]);  // 312
+            }
+            
+            // 🖼️ REDESSINE l'écran
+            gamePanel.repaint();
+        }
+    }
+
+RÉSUMÉ ÉTAPE 5 :
+├─ Client reçoit : "STATE:170,180,245,312"
+├─ Parse et extrait : topX=170, bottomX=180, ballX=245, ballY=312
+├─ Met à jour les objets locaux (Paddle, Ball)
+└─ Appelle repaint() pour redessiner
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ÉTAPE 6 : CLIENT REDESSINE L'ÉCRAN                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CLIENT (GameFrame.java - paintComponent())
+═══════════════════════════════════════════════════════════════════════════════
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        
+        // ...dessine fond, échiquiers...
+        
+        // 🎨 Dessine la raquette TOP (BLEUE)
+        int paddleTopY = topBoardY + (2 * cellSize) + 25;  // Position Y fixe
+        g.setColor(Color.BLUE);
+        g.fillRect(topPaddle.getX(),           // X = 170 (nouvelle position!)
+                   paddleTopY,                 // Y = fixe
+                   topPaddle.getWidth(),       // Largeur = 180
+                   topPaddle.getHeight());     // Hauteur = 15
+        
+        // 🎨 Dessine la raquette BOTTOM (ROUGE)
+        int paddleBottomY = bottomBoardY - 30;
+        g.setColor(Color.RED);
+        g.fillRect(bottomPaddle.getX(),        // X = 180
+                   paddleBottomY,              // Y = fixe
+                   bottomPaddle.getWidth(), 
+                   bottomPaddle.getHeight());
+        
+        // 🎨 Dessine la balle (BLANCHE)
+        g.setColor(Color.WHITE);
+        g.fillOval(ballX - GameConfig.BALL_RADIUS,   // X = 245
+                   ballY - GameConfig.BALL_RADIUS,   // Y = 312
+                   GameConfig.BALL_RADIUS * 2,       // Diamètre = 16
+                   GameConfig.BALL_RADIUS * 2);
+    }
+
+RÉSUMÉ ÉTAPE 6 :
+├─ paintComponent() est appelé automatiquement par repaint()
+├─ Dessine la raquette TOP à x=170 (nouvelle position)
+├─ Dessine la raquette BOTTOM à x=180 (pas bougé)
+└─ Dessine la balle à (245, 312)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+    CHRONOLOGIE COMPLÈTE (avec timestamps)
+═══════════════════════════════════════════════════════════════════════════════
+
+t=0.000s  👤 CLIENT 1 : Joueur appuie sur ← (VK_LEFT)
+          ├─ keyPressed() détecté
+          └─ out.println("MOVE:LEFT") envoyé
+
+t=0.005s  🖥️ SERVEUR : ClientHandler reçoit "MOVE:LEFT"
+          ├─ processCommand("MOVE:LEFT")
+          ├─ gameEngine.movePaddle("LEFT", "LEFT")
+          ├─ topPaddle.moveLeft(10) → x = 180 - 10 = 170
+          └─ broadcastState() appelé
+
+t=0.006s  🖥️ SERVEUR : Construit message "STATE:170,180,245,312"
+          ├─ Envoie à CLIENT 1
+          └─ Envoie à CLIENT 2
+
+t=0.010s  👤 CLIENT 1 : Reçoit "STATE:170,180,245,312"
+          ├─ processServerMessage()
+          ├─ topPaddle.setX(170)
+          ├─ bottomPaddle.setX(180)
+          ├─ ballX = 245, ballY = 312
+          └─ gamePanel.repaint()
+
+t=0.010s  👥 CLIENT 2 : Reçoit "STATE:170,180,245,312"
+          └─ Même traitement que CLIENT 1
+
+t=0.015s  👤 CLIENT 1 : paintComponent() s'exécute
+          └─ Dessine raquette TOP à x=170 (3 pixels plus à gauche)
+
+t=0.015s  👥 CLIENT 2 : paintComponent() s'exécute
+          └─ Voit AUSSI la raquette TOP à x=170
+
+RÉSULTAT :
+═══════════════════════════════════════════════════════════════════════════════
+Les DEUX joueurs voient la raquette bouger en MÊME TEMPS !
+Délai total : ~15ms (imperceptible pour l'œil humain)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+    POURQUOI LE CLIENT NE BOUGE PAS LA RAQUETTE DIRECTEMENT ?
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ MAUVAISE APPROCHE (Client bouge lui-même) :
+═══════════════════════════════════════════════════════════════════════════════
+
+    keyPressed(VK_LEFT) {
+        topPaddle.setX(topPaddle.getX() - 10);  // ❌ Bouge directement
+        gamePanel.repaint();
+    }
+
+PROBLÈMES :
+├─ 🔴 Désynchronisation : CLIENT 2 ne voit pas le mouvement !
+├─ 🔴 Triche possible : CLIENT 1 pourrait aller à x=99999
+├─ 🔴 Conflits : Si CLIENT 1 et 2 bougent en même temps → chaos
+└─ 🔴 Latence visible : CLIENT 1 bouge instantanément, CLIENT 2 avec délai
+
+
+✅ BONNE APPROCHE (Serveur autoritaire) :
+═══════════════════════════════════════════════════════════════════════════════
+
+    keyPressed(VK_LEFT) {
+        out.println("MOVE:LEFT");  // ✅ Demande au serveur
+    }
+
+AVANTAGES :
+├─ ✅ Synchronisation parfaite : Tous voient la même chose
+├─ ✅ Pas de triche : Serveur valide TOUT
+├─ ✅ Pas de conflit : Serveur décide
+├─ ✅ Latence imperceptible : 15ms (60 FPS)
+└─ ✅ Scalable : Facile d'ajouter plus de joueurs
+
+
+═══════════════════════════════════════════════════════════════════════════════
+    COMPARAISON VISUELLE
+═══════════════════════════════════════════════════════════════════════════════
+
+CLIENT DIRECT (mauvais) :
+═══════════════════════════════════════════════════════════════════════════════
+
+    CLIENT 1                    CLIENT 2
+    ┌───────────┐              ┌───────────┐
+    │ Raquette  │              │ Raquette  │
+    │ x = 170   │ ❌ DIFFÉRENT │ x = 180   │  ← Pas bougé !
+    └───────────┘              └───────────┘
+
+
+SERVEUR AUTORITAIRE (bon) :
+═══════════════════════════════════════════════════════════════════════════════
+
+    CLIENT 1                    CLIENT 2
+    ┌───────────┐              ┌───────────┐
+    │ Raquette  │              │ Raquette  │
+    │ x = 170   │ ✅ IDENTIQUE │ x = 170   │  ← Même état !
+    └───────────┘              └───────────┘
+           ▲                          ▲
+           └──────── SERVEUR ─────────┘
+                   x = 170
+
+
+═══════════════════════════════════════════════════════════════════════════════
+    RÉSUMÉ DU FLUX
+═══════════════════════════════════════════════════════════════════════════════
+
+1. CLIENT envoie DEMANDE        : "MOVE:LEFT"
+2. SERVEUR calcule RÉPONSE      : x = 180 - 10 = 170
+3. SERVEUR diffuse ÉTAT         : "STATE:170,180,245,312"
+4. TOUS LES CLIENTS reçoivent   : topPaddle.setX(170)
+5. TOUS LES CLIENTS affichent   : fillRect(170, y, w, h)
+
+RÈGLE D'OR :
+═══════════════════════════════════════════════════════════════════════════════
+Le CLIENT ne calcule JAMAIS rien.
+Il DEMANDE au serveur, puis AFFICHE ce que le serveur lui dit.
+Le SERVEUR est la source de vérité unique.

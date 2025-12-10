@@ -6,53 +6,211 @@ import java.net.*;
 import javax.swing.*;
 import common.Paddle;
 import common.Echequier;
+import common.GameConfig;
 
 public class GameFrame extends JFrame {
     private PrintWriter out;
     private BufferedReader in;
     private Socket socket;
 
-    private Paddle leftPaddle = new Paddle(50, 250);
-    private Paddle rightPaddle = new Paddle(750, 250);
+    public Paddle topPaddle = new Paddle(
+        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25 // même calcul que le client
+    );
+
+    public Paddle bottomPaddle = new Paddle(
+        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+        GameConfig.GAME_AREA_MAX_Y - 120 // même calcul que le client
+    );
+    
     private String mySide;
 
     private GamePanel gamePanel;
 
+    // Position et dimensions des échiquiers
+    private final int boardX = 0;
+    private final int topBoardY = 145;
+    private final int bottomBoardY = 505;
+    private final int cellSize = 60;
+
+    private Echequier topBoard = new Echequier(boardX, topBoardY, cellSize, cellSize, 8);
+    private Echequier bottomBoard = new Echequier(boardX, bottomBoardY, cellSize, cellSize, 8);
+
+    // Variables pour le formulaire
+    private JTextField ipField;
+    private JTextField portField;
+    private JTextField colsField;
+    private JButton connectButton;
+    private JButton updateColsButton;
+    private boolean connected = false;
+
+    private int ballX = GameConfig.BALL_START_X;
+    private int ballY = GameConfig.BALL_START_Y;
+
     public GameFrame() {
-        setTitle("Chess Pong - Raquette Temps Réel");
-        setSize(700, 400);
+        setTitle("Échec Pong - Client");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        connectToServer();
+        topBoard.setRowOwners("J2", "J2");
+        bottomBoard.setRowOwners("J1", "J1");
 
         gamePanel = new GamePanel();
         add(gamePanel);
         pack();
         setLocationRelativeTo(null);
 
+        setupConnectionForm();
         setupKeyListeners();
 
-        startReceivingThread();
+        topBoard.initializeDefaultPieces(false);
+        bottomBoard.initializeDefaultPieces(true);
+
+        // Centrer raquettes et balle au démarrage
+        centerPaddlesAndBall(topBoard.getCols());
+    }
+
+    private void setupConnectionForm() {
+        ipField = new JTextField("localhost", 15);
+        portField = new JTextField("5555", 5);
+        colsField = new JTextField("8", 5);
+        connectButton = new JButton("Se connecter");
+        updateColsButton = new JButton("Mettre a jour");
+
+        ipField.setBounds(10, 25, 150, 25);
+        portField.setBounds(10, 55, 150, 25);
+        connectButton.setBounds(10, 85, 150, 25);
+
+        colsField.setBounds(200, 25, 100, 25);
+        updateColsButton.setBounds(200, 55, 150, 25);
+
+        gamePanel.setLayout(null);
+        gamePanel.add(ipField);
+        gamePanel.add(portField);
+        gamePanel.add(connectButton);
+        gamePanel.add(colsField);
+        gamePanel.add(updateColsButton);
+
+        connectButton.addActionListener(e -> connectToServer());
+        updateColsButton.addActionListener(e -> updateColumns());
+
+        ActionListener connectAction = e -> connectToServer();
+        ipField.addActionListener(connectAction);
+        portField.addActionListener(connectAction);
+
+        colsField.addActionListener(e -> updateColumns());
+    }
+
+    // ✨ Centre les raquettes et la balle dans le panel de jeu
+    private void centerPaddlesAndBall(int cols) {
+        int panelWidth = cols * cellSize;
+        int paddleWidth = topPaddle.getWidth();
+
+        topPaddle.setX((panelWidth - paddleWidth) / 2);
+        bottomPaddle.setX((panelWidth - paddleWidth) / 2);
+
+        ballX = panelWidth / 2;
+    }
+
+    private void updateColumns() {
+        String colsText = colsField.getText().trim();
+        try {
+            int cols = Integer.parseInt(colsText);
+            if (cols < 2 || cols > 8) {
+                JOptionPane.showMessageDialog(this, "Le nombre de colonnes doit être entre 2 et 8 !");
+                requestFocus();
+                return;
+            }
+            if (cols % 2 != 0) {
+                JOptionPane.showMessageDialog(this, "Le nombre de colonnes doit être pair (2, 4, 6, 8) !");
+                requestFocus();
+                return;
+            }
+
+            topBoard.setCols(cols);
+            bottomBoard.setCols(cols);
+
+            topBoard.initializeDefaultPieces(false);
+            bottomBoard.initializeDefaultPieces(true);
+
+            // ✨ Centre raquettes et balle
+            centerPaddlesAndBall(cols);
+
+            resizeWindow(cols);
+
+            if (connected && out != null) {
+                out.println("COLS:" + cols);
+            }
+
+            gamePanel.repaint();
+            requestFocus();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Veuillez entrer un nombre valide !");
+            requestFocus();
+        }
+    }
+
+    // ✨ Redimensionner la fenêtre selon le nombre de colonnes
+    private void resizeWindow(int cols) {
+        int newWidth = cols * cellSize;
+        gamePanel.setPreferredSize(new Dimension(newWidth, GameConfig.WINDOW_HEIGHT));
+        pack();
+        setLocationRelativeTo(null);
+        System.out.println("Fenêtre redimensionnée : " + newWidth + "x" + GameConfig.WINDOW_HEIGHT);
     }
 
     private void connectToServer() {
+        if (connected) {
+            JOptionPane.showMessageDialog(this, "Déjà connecté !");
+            return;
+        }
+
+        String host = ipField.getText().trim();
+        String portText = portField.getText().trim();
+
+        if (host.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Veuillez entrer une adresse IP");
+            return;
+        }
+
         try {
-            socket = new Socket("localhost", 5555);
+            int port = Integer.parseInt(portText);
+
+            socket = new Socket(host, port);
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             String sideMessage = in.readLine();
             if ("FULL".equals(sideMessage)) {
                 JOptionPane.showMessageDialog(this, "Serveur plein (2 joueurs max)");
-                System.exit(1);
+                socket.close();
+                return;
             }
             if (sideMessage.startsWith("SIDE:")) {
                 mySide = sideMessage.substring(5);
                 System.out.println("Je suis du côté: " + mySide);
             }
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, "Erreur de connexion au serveur");
-            System.exit(1);
+
+            connected = true;
+            connectButton.setEnabled(false);
+            ipField.setEnabled(false);
+            portField.setEnabled(false);
+            connectButton.setText("Connecté ✓");
+
+            JOptionPane.showMessageDialog(this,
+                "Connecté au serveur !\nVous êtes: " + (mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"));
+
+            out.println("COLS:" + topBoard.getCols());
+            requestFocus();
+            startReceivingThread();
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Port invalide ! Utilisez un nombre (ex: 5555)");
+        } catch (UnknownHostException ex) {
+            JOptionPane.showMessageDialog(this, "Adresse IP invalide : " + host);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this,
+                "Erreur de connexion au serveur\n" + host + ":" + portText +
+                "\n\nVérifiez que le serveur est démarré.");
         }
     }
 
@@ -60,24 +218,24 @@ public class GameFrame extends JFrame {
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                if (mySide == null) return;
+                if (!connected || mySide == null) return;
+
                 if (mySide.equals("LEFT")) {
-                    if (e.getKeyCode() == KeyEvent.VK_Z) {
-                        out.println("MOVE:UP");
-                    } else if (e.getKeyCode() == KeyEvent.VK_S) {
-                        out.println("MOVE:DOWN");
+                    if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                        out.println("MOVE:LEFT");
+                    } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                        out.println("MOVE:RIGHT");
                     }
                 } else if (mySide.equals("RIGHT")) {
-                    if (e.getKeyCode() == KeyEvent.VK_UP) {
-                        out.println("MOVE:UP");
-                    } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                        out.println("MOVE:DOWN");
+                    if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                        out.println("MOVE:LEFT");
+                    } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                        out.println("MOVE:RIGHT");
                     }
                 }
             }
         });
         setFocusable(true);
-        requestFocus();
     }
 
     private void startReceivingThread() {
@@ -88,7 +246,17 @@ public class GameFrame extends JFrame {
                     processServerMessage(message);
                 }
             } catch (IOException e) {
-                System.out.println("Déconnecté du serveur");
+                if (connected) {
+                    System.out.println("Déconnecté du serveur");
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this, "Connexion perdue avec le serveur");
+                        connected = false;
+                        connectButton.setEnabled(true);
+                        ipField.setEnabled(true);
+                        portField.setEnabled(true);
+                        connectButton.setText("Se connecter");
+                    });
+                }
             }
         }).start();
     }
@@ -96,52 +264,99 @@ public class GameFrame extends JFrame {
     private void processServerMessage(String message) {
         if (message.startsWith("STATE:")) {
             String[] parts = message.substring(6).split(",");
-            leftPaddle.setY(Integer.parseInt(parts[0]));
-            rightPaddle.setY(Integer.parseInt(parts[1]));
+            topPaddle.setX(Integer.parseInt(parts[0]));
+            bottomPaddle.setX(Integer.parseInt(parts[1]));
+
+            if (parts.length >= 4) {
+                ballX = Integer.parseInt(parts[2]);
+                ballY = Integer.parseInt(parts[3]);
+            }
+
+            gamePanel.repaint();
+        } else if (message.startsWith("COLS:")) {
+            int cols = Integer.parseInt(message.substring(5));
+            topBoard.setCols(cols);
+            bottomBoard.setCols(cols);
+            colsField.setText(String.valueOf(cols));
+
+            topBoard.initializeDefaultPieces(false);
+            bottomBoard.initializeDefaultPieces(true);
+
+            // ✨ Centre raquettes et balle
+            centerPaddlesAndBall(cols);
+
+            SwingUtilities.invokeLater(() -> resizeWindow(cols));
             gamePanel.repaint();
         }
     }
 
     class GamePanel extends JPanel {
-        private final int panelWidth = 700;
-        private final int panelHeight = 400;
-        private final int boardY = 40;
-        private final int boardSpacing = 40;
-        private final int boardWidth = 8 * 40;
-        private final int boardHeight = 2 * 40;
-
-        private Echequier leftBoard = new Echequier(40, boardY, 40, 40);
-        private Echequier rightBoard = new Echequier(40 + boardWidth + boardSpacing, boardY, 40, 40);
-
         @Override
         public Dimension getPreferredSize() {
-            return new Dimension(panelWidth, panelHeight);
+            int dynamicWidth = topBoard.getCols() * cellSize;
+            return new Dimension(dynamicWidth, GameConfig.WINDOW_HEIGHT);
         }
 
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            // Fond blanc
-            g.setColor(Color.WHITE);
+
+            System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
+                + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
+            // Fond beige clair
+            g.setColor(new Color(245, 245, 220));
             g.fillRect(0, 0, getWidth(), getHeight());
 
-            // Dessiner les échiquiers
-            leftBoard.draw(g);
-            rightBoard.draw(g);
+            // Zone d'information en haut
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, getWidth(), 140);
 
-            // Espace blanc entre les deux échiquiers (déjà blanc, donc rien à dessiner)
-
-            // Dessiner les raquettes sous chaque échiquier
-            g.setColor(Color.BLUE);
-            g.fillRect(leftPaddle.getX(), leftPaddle.getY(), leftPaddle.getWidth(), leftPaddle.getHeight());
-            g.setColor(Color.RED);
-            g.fillRect(rightPaddle.getX(), rightPaddle.getY(), rightPaddle.getWidth(), rightPaddle.getHeight());
-
-            // Infos joueur
             g.setColor(Color.BLACK);
-            g.drawString("Vous contrôlez: " + mySide + " (Z/S ou ↑/↓)", 20, 20);
-            g.drawString("Raquette Gauche Y: " + leftPaddle.getY(), 20, 35);
-            g.drawString("Raquette Droite Y: " + rightPaddle.getY(), 20, 50);
+            g.setFont(new Font("Arial", Font.PLAIN, 11));
+            g.drawString("Adresse IP:", 10, 15);
+            g.drawString("Port:", 10, 40);
+
+            if (connected) {
+                g.setColor(new Color(0, 150, 0));
+                g.drawString("Connecte - Vous etes: " +
+                    (mySide != null && mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"),
+                    200, 50);
+                g.setColor(Color.BLACK);
+                g.drawString("Utilisez LEFT/RIGHT pour bouger", 200, 70);
+            } else {
+                g.setColor(Color.RED);
+                g.drawString("Non connecte", 200, 50);
+            }
+
+            g.setColor(Color.GRAY);
+            g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
+
+            // Dessiner les échiquiers
+            topBoard.draw(g);
+            bottomBoard.draw(g);
+
+            // Dessiner les raquettes horizontales
+            int paddleTopY = topBoardY + (2 * cellSize) + 25;
+            int paddleBottomY = bottomBoardY - 30;
+
+            g.setColor(Color.BLUE);
+            g.fillRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight());
+
+            g.setColor(Color.RED);
+            g.fillRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight());
+
+            // Dessiner la balle
+            g.setColor(Color.WHITE);
+            g.fillOval(ballX - GameConfig.BALL_RADIUS,
+                       ballY - GameConfig.BALL_RADIUS,
+                       GameConfig.BALL_RADIUS * 2,
+                       GameConfig.BALL_RADIUS * 2);
+
+            g.setColor(Color.BLACK);
+            g.drawOval(ballX - GameConfig.BALL_RADIUS,
+                       ballY - GameConfig.BALL_RADIUS,
+                       GameConfig.BALL_RADIUS * 2,
+                       GameConfig.BALL_RADIUS * 2);
         }
     }
 }
