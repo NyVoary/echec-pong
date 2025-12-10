@@ -8,6 +8,9 @@ import common.Paddle;
 import common.Echequier;
 import common.GameConfig;
 import common.ChessPiece;
+import common.PieceType;
+import java.util.Properties;
+import java.util.*;
 
 public class GameFrame extends JFrame {
     private PrintWriter out;
@@ -47,6 +50,7 @@ public Paddle bottomPaddle = new Paddle(
     private JTextField colsField;
     private JButton connectButton;
     private JButton updateColsButton;
+    private JButton vieConfigButton; // Ajoute ce bouton
     private boolean connected = false;
 
     private int ballX = GameConfig.BALL_START_X;
@@ -85,6 +89,9 @@ public Paddle bottomPaddle = new Paddle(
         colsField = new JTextField("8", 5);
         connectButton = new JButton("Se connecter");
         updateColsButton = new JButton("Mettre a jour");
+        vieConfigButton = new JButton("Configurer les vies");
+        vieConfigButton.setBounds(400, 25, 180, 25);
+        gamePanel.add(vieConfigButton);
 
         ipField.setBounds(10, 25, 150, 25);
         portField.setBounds(10, 55, 150, 25);
@@ -99,15 +106,22 @@ public Paddle bottomPaddle = new Paddle(
         gamePanel.add(connectButton);
         gamePanel.add(colsField);
         gamePanel.add(updateColsButton);
+        gamePanel.add(vieConfigButton);
 
         connectButton.addActionListener(e -> connectToServer());
         updateColsButton.addActionListener(e -> updateColumns());
+        vieConfigButton.addActionListener(e -> openVieConfigDialog());
 
         ActionListener connectAction = e -> connectToServer();
         ipField.addActionListener(connectAction);
         portField.addActionListener(connectAction);
 
         colsField.addActionListener(e -> updateColumns());
+    }
+
+    private void openVieConfigDialog() {
+        VieConfigDialog dialog = new VieConfigDialog(this);
+        dialog.setVisible(true);
     }
 
     // ✨ Centre les raquettes et la balle dans le panel de jeu
@@ -283,25 +297,38 @@ public Paddle bottomPaddle = new Paddle(
                 ballY = Integer.parseInt(parts[3]);
             }
 
-            // Synchroniser les PV des pièces
+            // Synchroniser les PV des pièces PAR POSITION ET TYPE
             if (mainParts.length > 1) {
                 String[] piecesData = mainParts[1].split("\\|");
-                int idx = 0;
                 // topBoard
                 for (ChessPiece piece : topBoard.getPieces()) {
-                    if (idx >= piecesData.length) break;
-                    String[] pdata = piecesData[idx].split(",");
-                    piece.setCurrentHP(Integer.parseInt(pdata[3]));
-                    piece.setAlive("1".equals(pdata[4]));
-                    idx++;
+                    for (String pdata : piecesData) {
+                        String[] fields = pdata.split(",");
+                        if (fields.length < 5) continue;
+                        String type = fields[0];
+                        int row = Integer.parseInt(fields[1]);
+                        int col = Integer.parseInt(fields[2]);
+                        if (piece.getType().name().equals(type) && piece.getRow() == row && piece.getCol() == col) {
+                            piece.setCurrentHP(Integer.parseInt(fields[3]));
+                            piece.setAlive("1".equals(fields[4]));
+                            break;
+                        }
+                    }
                 }
                 // bottomBoard
                 for (ChessPiece piece : bottomBoard.getPieces()) {
-                    if (idx >= piecesData.length) break;
-                    String[] pdata = piecesData[idx].split(",");
-                    piece.setCurrentHP(Integer.parseInt(pdata[3]));
-                    piece.setAlive("1".equals(pdata[4]));
-                    idx++;
+                    for (String pdata : piecesData) {
+                        String[] fields = pdata.split(",");
+                        if (fields.length < 5) continue;
+                        String type = fields[0];
+                        int row = Integer.parseInt(fields[1]);
+                        int col = Integer.parseInt(fields[2]);
+                        if (piece.getType().name().equals(type) && piece.getRow() == row && piece.getCol() == col) {
+                            piece.setCurrentHP(Integer.parseInt(fields[3]));
+                            piece.setAlive("1".equals(fields[4]));
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -388,6 +415,62 @@ public Paddle bottomPaddle = new Paddle(
                        ballY - GameConfig.BALL_RADIUS,
                        GameConfig.BALL_RADIUS * 2,
                        GameConfig.BALL_RADIUS * 2);
+        }
+    }
+
+    // === Fenêtre de configuration des vies ===
+    class VieConfigDialog extends JDialog {
+        private Map<PieceType, JTextField> fields = new HashMap<>();
+
+        public VieConfigDialog(Frame parent) {
+            super(parent, "Configurer les vies des pièces", true);
+            setLayout(new GridLayout(PieceType.values().length + 1, 2, 10, 5));
+            setSize(350, 250);
+            setLocationRelativeTo(parent);
+
+            for (PieceType type : PieceType.values()) {
+                add(new JLabel(type.getDisplayName()));
+                JTextField tf = new JTextField(String.valueOf(type.getMaxHP()), 5);
+                fields.put(type, tf);
+                add(tf);
+            }
+
+            JButton saveBtn = new JButton("Enregistrer");
+            saveBtn.addActionListener(e -> saveVieConfig());
+            add(saveBtn);
+
+            JButton cancelBtn = new JButton("Annuler");
+            cancelBtn.addActionListener(e -> dispose());
+            add(cancelBtn);
+        }
+
+        private void saveVieConfig() {
+            Properties props = new Properties();
+            for (PieceType type : PieceType.values()) {
+                try {
+                    int hp = Integer.parseInt(fields.get(type).getText().trim());
+                    type.setMaxHP(hp);
+                    props.setProperty(type.name(), String.valueOf(hp));
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Valeur invalide pour " + type.getDisplayName());
+                    return;
+                }
+            }
+            // Sauvegarde dans le fichier vie.txt
+            try (FileWriter fw = new FileWriter("config/vie.txt")) {
+                for (PieceType type : PieceType.values()) {
+                    fw.write(type.name() + "=" + type.getMaxHP() + "\n");
+                }
+                fw.flush();
+                JOptionPane.showMessageDialog(this, "Vies enregistrées !");
+                // ✨ Demande au serveur de recharger les vies
+                if (out != null) {
+                    out.println("RELOAD_HP");
+                }
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
+            }
+            dispose();
         }
     }
 }
