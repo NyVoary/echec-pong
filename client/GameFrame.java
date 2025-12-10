@@ -15,23 +15,27 @@ public class GameFrame extends JFrame {
 
     public Paddle topPaddle = new Paddle(
         (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
-        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25 // même calcul que le client
+        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25,
+        GameConfig.PADDLE_WIDTH,
+        GameConfig.PADDLE_HEIGHT
     );
 
-    public Paddle bottomPaddle = new Paddle(
-        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
-        GameConfig.GAME_AREA_MAX_Y - 120 // même calcul que le client
-    );
+public Paddle bottomPaddle = new Paddle(
+    (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+    GameConfig.BOTTOM_BOARD_Y - 30,
+    GameConfig.PADDLE_WIDTH,
+    GameConfig.PADDLE_HEIGHT
+);
     
     private String mySide;
 
     private GamePanel gamePanel;
 
     // Position et dimensions des échiquiers
-    private final int boardX = 0;
-    private final int topBoardY = 145;
-    private final int bottomBoardY = 505;
-    private final int cellSize = 60;
+    private final int boardX = GameConfig.BOARD_X;
+    private final int topBoardY = GameConfig.TOP_BOARD_Y;
+    private final int bottomBoardY = GameConfig.BOTTOM_BOARD_Y;
+    private final int cellSize = GameConfig.CELL_SIZE;
 
     private Echequier topBoard = new Echequier(boardX, topBoardY, cellSize, cellSize, 8);
     private Echequier bottomBoard = new Echequier(boardX, bottomBoardY, cellSize, cellSize, 8);
@@ -132,8 +136,19 @@ public class GameFrame extends JFrame {
             topBoard.initializeDefaultPieces(false);
             bottomBoard.initializeDefaultPieces(true);
 
-            // ✨ Centre raquettes et balle
-            centerPaddlesAndBall(cols);
+            // ✨ Calculer la nouvelle largeur du panel et du paddle
+            int panelWidth = cols * cellSize;
+            int paddleWidth = panelWidth / 2; // Par exemple, moitié de la largeur du board
+
+            topPaddle.setWidth(paddleWidth);
+            bottomPaddle.setWidth(paddleWidth);
+
+            // ✨ Centrer les paddles avec la nouvelle largeur
+            topPaddle.setX((panelWidth - paddleWidth) / 2);
+            bottomPaddle.setX((panelWidth - paddleWidth) / 2);
+
+            // ✨ Centrer la balle
+            ballX = panelWidth / 2;
 
             resizeWindow(cols);
 
@@ -155,6 +170,19 @@ public class GameFrame extends JFrame {
         gamePanel.setPreferredSize(new Dimension(newWidth, GameConfig.WINDOW_HEIGHT));
         pack();
         setLocationRelativeTo(null);
+
+        // Met à jour la largeur du paddle (ex: moitié du board)
+        int paddleWidth = newWidth / 2;
+        topPaddle.setWidth(paddleWidth);
+        bottomPaddle.setWidth(paddleWidth);
+
+        // Centre les paddles dans la nouvelle largeur
+        topPaddle.setX((newWidth - paddleWidth) / 2);
+        bottomPaddle.setX((newWidth - paddleWidth) / 2);
+
+        // Centre la balle aussi si besoin
+        ballX = newWidth / 2;
+
         System.out.println("Fenêtre redimensionnée : " + newWidth + "x" + GameConfig.WINDOW_HEIGHT);
     }
 

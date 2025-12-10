@@ -32,4 +32,10 @@ public class GameConfig {
     // === GAME LOOP ===
     public static final int TICK_RATE = 60;  // 60 FPS
     public static final int TICK_DELAY = 1000 / TICK_RATE;  // ~16ms
+    
+    // === ÉCHIQUIER ===
+    public static final int BOARD_X = 0;
+    public static final int TOP_BOARD_Y = 145;
+    public static final int BOTTOM_BOARD_Y = 505;
+    public static final int CELL_SIZE = 60;
 }

@@ -3,16 +3,38 @@ import java.util.*;
 import common.Paddle;
 import common.Ball;
 import common.GameConfig;
+import common.Echequier;
 
 public class GameEngine {
     public Paddle topPaddle = new Paddle(
         (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
-        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25 // même calcul que le client
+        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25,
+        GameConfig.PADDLE_WIDTH,
+        GameConfig.PADDLE_HEIGHT
     );
+
     public Paddle bottomPaddle = new Paddle(
         (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
-        GameConfig.GAME_AREA_MAX_Y - 120 // même calcul que le client
+        GameConfig.BOTTOM_BOARD_Y - 30,
+        GameConfig.PADDLE_WIDTH,
+        GameConfig.PADDLE_HEIGHT
     );
+
+    public Echequier topBoard = new Echequier(
+        GameConfig.BOARD_X,
+        GameConfig.TOP_BOARD_Y,
+        GameConfig.CELL_SIZE,
+        GameConfig.CELL_SIZE,
+        8
+    );
+    public Echequier bottomBoard = new Echequier(
+        GameConfig.BOARD_X,
+        GameConfig.BOTTOM_BOARD_Y,
+        GameConfig.CELL_SIZE,
+        GameConfig.CELL_SIZE,
+        8
+    );
+
     public Ball ball;
     public List<ClientHandler> clients = new ArrayList<>();
     public Map<String, Player> players = new HashMap<>();
@@ -32,6 +54,9 @@ public class GameEngine {
             GameConfig.GAME_AREA_MIN_Y,
             GameConfig.GAME_AREA_MAX_Y
         );
+
+        topBoard.initializeDefaultPieces(false);
+        bottomBoard.initializeDefaultPieces(true);
     }
 
     // === GESTION DES JOUEURS ===
@@ -92,19 +117,23 @@ public class GameEngine {
     }
 
     private synchronized void updateGame() {
-        // Mettre à jour la balle
-        // Mettre à jour la balle
-        ball.update();
+            ball.update();
 
-    System.out.println("Serveur - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
-        + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
-        
-        // Vérifier collision avec les paddles
-        ball.bounceOnPaddle(topPaddle.getX(), topPaddle.getY(), topPaddle.getWidth(), topPaddle.getHeight());
+            System.out.println(
+                "Ball: x=" + ball.getX() + ", y=" + ball.getY() +
+                " | topBoard: x=" + topBoard.getX() + ", y=" + topBoard.getY() +
+                " | bottomBoard: x=" + bottomBoard.getX() + ", y=" + bottomBoard.getY()
+            );
 
-        // BOTTOM paddle : utilise la vraie position Y
-        ball.bounceOnPaddle(bottomPaddle.getX(), bottomPaddle.getY(), bottomPaddle.getWidth(), bottomPaddle.getHeight());
-        
+            System.out.println("Serveur - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
+                + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
+
+            ball.bounce(topPaddle.getX(), topPaddle.getY(), topPaddle.getWidth(), topPaddle.getHeight());
+            ball.bounce(bottomPaddle.getX(), bottomPaddle.getY(), bottomPaddle.getWidth(), bottomPaddle.getHeight());
+
+            topBoard.bounceBallOnPiece(ball);
+            bottomBoard.bounceBallOnPiece(ball);
+                
         // Vérifier si la balle est sortie
         if (ball.isOutTop()) {
             System.out.println("Balle sortie en haut ! Point pour BOTTOM");
@@ -133,10 +162,11 @@ public class GameEngine {
     // === MOUVEMENT DES RAQUETTES ===
     public synchronized void movePaddle(String side, String direction) {
         Paddle paddle = side.equals("LEFT") ? topPaddle : bottomPaddle;
+        int panelWidth = boardCols * GameConfig.CELL_SIZE; // largeur dynamique
         if (direction.equals("LEFT")) {
-            paddle.moveLeft(GameConfig.NORMAL_SPEED);
+            paddle.moveLeft(GameConfig.NORMAL_SPEED, panelWidth);
         } else if (direction.equals("RIGHT")) {
-            paddle.moveRight(GameConfig.NORMAL_SPEED);
+            paddle.moveRight(GameConfig.NORMAL_SPEED, panelWidth);
         }
         broadcastState();
     }

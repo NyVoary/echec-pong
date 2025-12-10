@@ -17,13 +17,26 @@ public class Echequier {
     // Liste des pièces sur l'échiquier
     private List<ChessPiece> pieces = new ArrayList<>();
 
+    private Carre[][] cases;
+
     public Echequier(int x, int y, int cellWidth, int cellHeight, int cols) {
         this.x = x;
         this.y = y;
         this.cellWidth = cellWidth;
         this.cellHeight = cellHeight;
         this.cols = cols;
+        this.cases = new Carre[ROWS][cols];
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < cols; col++) {
+                int carreX = x + col * cellWidth;
+                int carreY = y + row * cellHeight;
+                cases[row][col] = new Carre(row, col, carreX, carreY);
+            }
+        }
     }
+
+    public int getX() { return x; }
+    public int getY() { return y; }
 
     public void setRowOwners(String ownerTop, String ownerBottom) {
         rowOwners[0] = ownerTop;
@@ -32,6 +45,15 @@ public class Echequier {
 
     public void setCols(int cols) {
         this.cols = cols;
+        // Recréer la grille de cases avec les nouvelles colonnes
+        this.cases = new Carre[ROWS][cols];
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < cols; col++) {
+                int carreX = x + col * cellWidth;
+                int carreY = y + row * cellHeight;
+                cases[row][col] = new Carre(row, col, carreX, carreY);
+            }
+        }
     }
 
     public int getCols() {
@@ -41,11 +63,18 @@ public class Echequier {
     // Ajoute une pièce à l'échiquier
     public void addPiece(ChessPiece piece) {
         pieces.add(piece);
+        cases[piece.getRow()][piece.getCol()].setPiece(piece); // Ajoute la pièce dans le Carre
     }
 
     // Initialise les pièces comme un vrai échiquier (pour 8 colonnes)
     public void initializeDefaultPieces(boolean isWhite) {
         pieces.clear();
+        // Réinitialise les cases (enlève les pièces)
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < cols; col++) {
+                cases[row][col].setPiece(null);
+            }
+        }
         PieceType[] layout;
         switch (cols) {
             case 8:
@@ -110,6 +139,37 @@ public class Echequier {
             System.err.println("Image manquante: " + type.getImageFileName(isWhite));
         }
         return new ChessPiece(type, img, null, row, col, isWhite);
+    }
+
+    /**
+     * Fait rebondir la balle si elle touche une case contenant une pièce vivante.
+     * Retourne true si collision, false sinon.
+     */
+    public boolean bounceBallOnPiece(Ball ball) {
+        boolean collision = false;
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < cols; col++) {
+                Carre carre = cases[row][col];
+                System.out.println("Case (" + row + "," + col + ") hasPiece=" + carre.hasPiece() +
+                    " | caseX=" + carre.getX() + ", caseY=" + carre.getY() +
+                    " | Ball: x=" + ball.getX() + ", y=" + ball.getY());
+                if (!carre.hasPiece()) continue;
+
+                int caseX = carre.getX();
+                int caseY = carre.getY();
+                int ballX = ball.getX();
+                int ballY = ball.getY();
+                int r = ball.getRadius();
+
+                if (ballX + r >= caseX && ballX - r <= caseX + cellWidth &&
+                    ballY + r >= caseY && ballY - r <= caseY + cellHeight) {
+                    ball.bounce(caseX, caseY, cellWidth, cellHeight);
+                    System.out.println("Collision balle/carre (" + row + "," + col + ")");
+                    collision = true;
+                }
+            }
+        }
+        return collision;
     }
 
     public void draw(Graphics g) {
