@@ -1,5 +1,6 @@
 package common;
-
+import java.io.*;
+import java.util.*;
 public enum PieceType {
     PAWN("Pion", 10, 30),
     ROOK("Tour", 50, 100),
@@ -49,6 +50,26 @@ public enum PieceType {
     
     public int getDefaultValue() { return defaultValue; }
     public int getDefaultMaxHP() { return defaultMaxHP; }
+
+    public static void loadHPFromFile(String path) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split("=");
+                if (parts.length == 2) {
+                    String name = parts[0].trim();
+                    int hp = Integer.parseInt(parts[1].trim());
+                    for (PieceType type : PieceType.values()) {
+                        if (type.name().equalsIgnoreCase(name)) {
+                            type.setMaxHP(hp);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Erreur lecture vie.txt : " + e.getMessage());
+        }
+    }
     
     // Retourne le nom du fichier image selon le type et la couleur
     public String getImageFileName(boolean isWhite) {

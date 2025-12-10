@@ -35,6 +35,10 @@ public class Echequier {
         }
     }
 
+    public List<ChessPiece> getPieces() {
+    return pieces;
+}
+
     public int getX() { return x; }
     public int getY() { return y; }
 
@@ -164,7 +168,8 @@ public class Echequier {
                 if (ballX + r >= caseX && ballX - r <= caseX + cellWidth &&
                     ballY + r >= caseY && ballY - r <= caseY + cellHeight) {
                     ball.bounce(caseX, caseY, cellWidth, cellHeight);
-                    System.out.println("Collision balle/carre (" + row + "," + col + ")");
+                    ChessPiece piece = carre.getPiece();
+                    piece.takeDamage(1); // Par exemple, 10 PV par rebond
                     collision = true;
                 }
             }
@@ -194,10 +199,15 @@ public class Echequier {
                 if (piece.getImage() != null) {
                     g.drawImage(piece.getImage(), px + 5, py + 5, cellWidth - 10, cellHeight - 10, null);
                 } else {
-                    // Fallback si image manquante
                     g.setColor(piece.isWhite() ? Color.WHITE : Color.BLACK);
                     g.fillOval(px + 10, py + 10, cellWidth - 20, cellHeight - 20);
                 }
+                // ✨ Afficher les PV sous la pièce
+                g.setColor(Color.WHITE);
+                g.setFont(new Font("Arial", Font.BOLD, 12));
+                String hpText = String.valueOf(piece.getCurrentHP());
+                int textWidth = g.getFontMetrics().stringWidth(hpText);
+                g.drawString(hpText, px + (cellWidth - textWidth) / 2, py + cellHeight - 5);
             }
         }
     }

@@ -8,10 +8,10 @@ public class Ball {
     private final int radius;   // Rayon de la balle
     
     // Limites du terrain
-    private final int minX;
-    private final int maxX;
-    private final int minY;
-    private final int maxY;
+    private int minX;
+    private int maxX;
+    private int minY;
+    private int maxY;
     
     public Ball(double x, double y, int radius, int minX, int maxX, int minY, int maxY) {
         this.x = x;
@@ -25,6 +25,14 @@ public class Ball {
         // Vitesse initiale aléatoire
         this.speedX = 3;
         this.speedY = 3;
+    }
+
+    public void setLimits(int minX, int maxX, int minY, int maxY) {
+        // Utilise des variables non-final pour pouvoir les modifier
+        this.minX = minX;
+        this.maxX = maxX;
+        this.minY = minY;
+        this.maxY = maxY;
     }
     
     // === MOUVEMENT ===
