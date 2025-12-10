@@ -5,6 +5,7 @@ import common.Ball;
 import common.GameConfig;
 import common.Echequier;
 import common.ChessPiece;
+import common.PieceType;
 
 public class GameEngine {
     public Paddle topPaddle = new Paddle(
@@ -45,6 +46,9 @@ public class GameEngine {
     private Thread gameLoopThread;
 
     public GameEngine() {
+        // Charger les PV depuis le fichier AVANT d'initialiser les pièces
+        PieceType.loadHPFromFile("config/vie.txt");
+
         // Initialiser la balle
         ball = new Ball(
             GameConfig.BALL_START_X, 
@@ -59,6 +63,22 @@ public class GameEngine {
         topBoard.initializeDefaultPieces(false);
         bottomBoard.initializeDefaultPieces(true);
     }
+
+    public void reloadPieceHP() {
+    PieceType.loadHPFromFile("config/vie.txt");
+    // Met à jour les PV max de toutes les pièces existantes
+    for (ChessPiece piece : topBoard.getPieces()) {
+        if (piece.isAlive()) {
+            piece.setCurrentHP(piece.getType().getMaxHP());
+        }
+    }
+    for (ChessPiece piece : bottomBoard.getPieces()) {
+        if (piece.isAlive()) {
+            piece.setCurrentHP(piece.getType().getMaxHP());
+        }
+    }
+    broadcastState();
+}
 
     // === GESTION DES JOUEURS ===
     public synchronized void addPlayer(String side, ClientHandler handler) {

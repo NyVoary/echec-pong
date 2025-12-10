@@ -61,6 +61,9 @@ public class ClientHandler extends Thread {
             System.out.println("📊 Mise à jour colonnes: " + cols);
             gameEngine.setBoardCols(cols);
         }
+        else if (command.equals("RELOAD_HP")) {
+            gameEngine.reloadPieceHP();
+        }
     }
 
     public void sendMessage(String message) {
