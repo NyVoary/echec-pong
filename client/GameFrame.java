@@ -7,6 +7,7 @@ import javax.swing.*;
 import common.Paddle;
 import common.Echequier;
 import common.GameConfig;
+import common.ChessPiece;
 
 public class GameFrame extends JFrame {
     private PrintWriter out;
@@ -273,13 +274,35 @@ public Paddle bottomPaddle = new Paddle(
 
     private void processServerMessage(String message) {
         if (message.startsWith("STATE:")) {
-            String[] parts = message.substring(6).split(",");
+            String[] mainParts = message.split(";PIECES:");
+            String[] parts = mainParts[0].substring(6).split(",");
             topPaddle.setX(Integer.parseInt(parts[0]));
             bottomPaddle.setX(Integer.parseInt(parts[1]));
-
             if (parts.length >= 4) {
                 ballX = Integer.parseInt(parts[2]);
                 ballY = Integer.parseInt(parts[3]);
+            }
+
+            // Synchroniser les PV des pièces
+            if (mainParts.length > 1) {
+                String[] piecesData = mainParts[1].split("\\|");
+                int idx = 0;
+                // topBoard
+                for (ChessPiece piece : topBoard.getPieces()) {
+                    if (idx >= piecesData.length) break;
+                    String[] pdata = piecesData[idx].split(",");
+                    piece.setCurrentHP(Integer.parseInt(pdata[3]));
+                    piece.setAlive("1".equals(pdata[4]));
+                    idx++;
+                }
+                // bottomBoard
+                for (ChessPiece piece : bottomBoard.getPieces()) {
+                    if (idx >= piecesData.length) break;
+                    String[] pdata = piecesData[idx].split(",");
+                    piece.setCurrentHP(Integer.parseInt(pdata[3]));
+                    piece.setAlive("1".equals(pdata[4]));
+                    idx++;
+                }
             }
 
             gamePanel.repaint();

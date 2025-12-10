@@ -38,4 +38,12 @@ public class ChessPiece {
             currentHP = 0;
         }
     }
+
+    public void setCurrentHP(int hp) {
+        this.currentHP = hp;
+        this.isAlive = hp > 0;
+    }
+    public void setAlive(boolean alive) {
+        this.isAlive = alive;
+    }
 }

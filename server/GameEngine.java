@@ -4,6 +4,7 @@ import common.Paddle;
 import common.Ball;
 import common.GameConfig;
 import common.Echequier;
+import common.ChessPiece;
 
 public class GameEngine {
     public Paddle topPaddle = new Paddle(
@@ -119,11 +120,11 @@ public class GameEngine {
         private synchronized void updateGame() {
             ball.update();
 
-    System.out.println(
-        "Ball: x=" + ball.getX() + ", y=" + ball.getY() +
-        " | topBoard: x=" + topBoard.getX() + ", y=" + topBoard.getY() +
-        " | bottomBoard: x=" + bottomBoard.getX() + ", y=" + bottomBoard.getY()
-    );
+            System.out.println(
+                "Ball: x=" + ball.getX() + ", y=" + ball.getY() +
+                " | topBoard: x=" + topBoard.getX() + ", y=" + topBoard.getY() +
+                " | bottomBoard: x=" + bottomBoard.getX() + ", y=" + bottomBoard.getY()
+            );
 
             System.out.println("Serveur - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
                 + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
@@ -198,11 +199,30 @@ public class GameEngine {
         }
     }
 
-    public String getGameState() {
-        return "STATE:" + 
-               topPaddle.getX() + "," + 
-               bottomPaddle.getX() + "," +
-               ball.getX() + "," +
-               ball.getY();
+public String getGameState() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("STATE:");
+    sb.append(topPaddle.getX()).append(",");
+    sb.append(bottomPaddle.getX()).append(",");
+    sb.append(ball.getX()).append(",");
+    sb.append(ball.getY());
+
+    // Ajoute l'état des pièces
+    sb.append(";PIECES:");
+    for (ChessPiece piece : topBoard.getPieces()) {
+        sb.append(piece.getType().name()).append(",");
+        sb.append(piece.getRow()).append(",");
+        sb.append(piece.getCol()).append(",");
+        sb.append(piece.getCurrentHP()).append(",");
+        sb.append(piece.isAlive() ? "1" : "0").append("|");
     }
+    for (ChessPiece piece : bottomBoard.getPieces()) {
+        sb.append(piece.getType().name()).append(",");
+        sb.append(piece.getRow()).append(",");
+        sb.append(piece.getCol()).append(",");
+        sb.append(piece.getCurrentHP()).append(",");
+        sb.append(piece.isAlive() ? "1" : "0").append("|");
+    }
+    return sb.toString();
+}
 }

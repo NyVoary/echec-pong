@@ -8,10 +8,10 @@ public class Ball {
     private final int radius;   // Rayon de la balle
     
     // Limites du terrain
-private int minX;
-private int maxX;
-private int minY;
-private int maxY;
+    private int minX;
+    private int maxX;
+    private int minY;
+    private int maxY;
     
     public Ball(double x, double y, int radius, int minX, int maxX, int minY, int maxY) {
         this.x = x;
