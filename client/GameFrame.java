@@ -71,10 +71,11 @@ public Paddle bottomPaddle = new Paddle(
         setupConnectionForm();
         setupKeyListeners();
 
-        topBoard.initializeDefaultPieces(false);
-        bottomBoard.initializeDefaultPieces(true);
+        // Suppression de l'initialisation locale des pièces
+        // topBoard.initializeDefaultPieces(false);
+        // bottomBoard.initializeDefaultPieces(true);
 
-        centerPaddlesAndBall(topBoard.getCols());
+        // centerPaddlesAndBall(topBoard.getCols());
     }
 
     private void setupConnectionForm() {
@@ -140,14 +141,8 @@ public Paddle bottomPaddle = new Paddle(
             topBoard.setCols(cols);
             bottomBoard.setCols(cols);
 
-            topBoard.initializeDefaultPieces(false);
-            bottomBoard.initializeDefaultPieces(true);
-
-            // ✨ Centre raquettes et balle
-            int paddleWidth = cols * cellSize / 2; // exemple: moitié de la largeur du board
-            topPaddle.setWidth(paddleWidth);
-            bottomPaddle.setWidth(paddleWidth);
-            centerPaddlesAndBall(cols);
+            // topBoard.initializeDefaultPieces(false);
+            // bottomBoard.initializeDefaultPieces(true);
 
             resizeWindow(cols);
 
@@ -297,9 +292,7 @@ public Paddle bottomPaddle = new Paddle(
             topBoard.initializeDefaultPieces(false);
             bottomBoard.initializeDefaultPieces(true);
 
-            // ✨ Centre raquettes et balle
-            centerPaddlesAndBall(cols);
-
+            // NE PAS recalculer la largeur ou centrer les paddles ici !
             SwingUtilities.invokeLater(() -> resizeWindow(cols));
             gamePanel.repaint();
         }
