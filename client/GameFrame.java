@@ -31,12 +31,11 @@ public class GameFrame extends JFrame {
     // Variables pour le formulaire
     private JTextField ipField;
     private JTextField portField;
-    private JTextField colsField; // Nouveau champ pour les colonnes
+    private JTextField colsField;
     private JButton connectButton;
-    private JButton updateColsButton; // Nouveau bouton pour mettre à jour
+    private JButton updateColsButton;
     private boolean connected = false;
 
-    // Ajoute dans les variables de classe
     private int ballX = GameConfig.BALL_START_X;
     private int ballY = GameConfig.BALL_START_Y;
 
@@ -57,24 +56,19 @@ public class GameFrame extends JFrame {
     }
 
     private void setupConnectionForm() {
-        // Créer les champs de texte
         ipField = new JTextField("localhost", 15);
         portField = new JTextField("5555", 5);
-        colsField = new JTextField("8", 5); // Par défaut 8 colonnes
+        colsField = new JTextField("8", 5);
         connectButton = new JButton("Se connecter");
         updateColsButton = new JButton("Mettre a jour");
 
-        // Position des composants dans le GamePanel (côte à côte)
-        // Colonne gauche: IP et Port
         ipField.setBounds(10, 25, 150, 25);
         portField.setBounds(10, 55, 150, 25);
         connectButton.setBounds(10, 85, 150, 25);
         
-        // Colonne droite: Colonnes
         colsField.setBounds(200, 25, 100, 25);
         updateColsButton.setBounds(200, 55, 150, 25);
 
-        // Ajouter au panel
         gamePanel.setLayout(null);
         gamePanel.add(ipField);
         gamePanel.add(portField);
@@ -82,18 +76,13 @@ public class GameFrame extends JFrame {
         gamePanel.add(colsField);
         gamePanel.add(updateColsButton);
 
-        // Action du bouton connexion
         connectButton.addActionListener(e -> connectToServer());
-
-        // Action du bouton mise à jour colonnes
         updateColsButton.addActionListener(e -> updateColumns());
 
-        // Permettre de se connecter avec Enter
         ActionListener connectAction = e -> connectToServer();
         ipField.addActionListener(connectAction);
         portField.addActionListener(connectAction);
         
-        // Permettre de mettre à jour avec Enter
         colsField.addActionListener(e -> updateColumns());
     }
 
@@ -103,22 +92,26 @@ public class GameFrame extends JFrame {
         try {
             int cols = Integer.parseInt(colsText);
             
-            // Validation: pair et entre 2 et 8
             if (cols < 2 || cols > 8) {
                 JOptionPane.showMessageDialog(this, 
                     "Le nombre de colonnes doit être entre 2 et 8 !");
+                requestFocus(); // ✨ AJOUTÉ : Rendre le focus après le message
                 return;
             }
             
             if (cols % 2 != 0) {
                 JOptionPane.showMessageDialog(this, 
                     "Le nombre de colonnes doit être pair (2, 4, 6, 8) !");
+                requestFocus(); // ✨ AJOUTÉ : Rendre le focus après le message
                 return;
             }
             
-            // Mettre à jour les deux échiquiers
+            // Mettre à jour les échiquiers
             topBoard.setCols(cols);
             bottomBoard.setCols(cols);
+            
+            // Redimensionner la fenêtre
+            resizeWindow(cols);
             
             // Envoyer au serveur si connecté
             if (connected && out != null) {
@@ -127,10 +120,30 @@ public class GameFrame extends JFrame {
             
             gamePanel.repaint();
             
+            // ✨ AJOUTÉ : Rendre le focus à la fenêtre pour que le KeyListener fonctionne
+            requestFocus();
+            
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, 
                 "Veuillez entrer un nombre valide !");
+            requestFocus(); // ✨ AJOUTÉ : Rendre le focus après le message
         }
+    }
+
+    // ✨ NOUVELLE MÉTHODE : Redimensionner la fenêtre selon le nombre de colonnes
+    private void resizeWindow(int cols) {
+        int newWidth = cols * cellSize; // Largeur = nombre de colonnes × taille cellule
+        
+        // Mettre à jour la taille préférée du panel
+        gamePanel.setPreferredSize(new Dimension(newWidth, GameConfig.WINDOW_HEIGHT));
+        
+        // Repackager la fenêtre (ajuste automatiquement la taille)
+        pack();
+        
+        // Recentrer la fenêtre
+        setLocationRelativeTo(null);
+        
+        System.out.println("Fenêtre redimensionnée : " + newWidth + "x" + GameConfig.WINDOW_HEIGHT);
     }
 
     private void connectToServer() {
@@ -150,7 +163,6 @@ public class GameFrame extends JFrame {
         try {
             int port = Integer.parseInt(portText);
             
-            // Tenter la connexion
             socket = new Socket(host, port);
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -166,7 +178,6 @@ public class GameFrame extends JFrame {
                 System.out.println("Je suis du côté: " + mySide);
             }
 
-            // Connexion réussie
             connected = true;
             connectButton.setEnabled(false);
             ipField.setEnabled(false);
@@ -176,13 +187,8 @@ public class GameFrame extends JFrame {
             JOptionPane.showMessageDialog(this, 
                 "Connecté au serveur !\nVous êtes: " + (mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"));
 
-            // Envoyer le nombre de colonnes actuel
             out.println("COLS:" + topBoard.getCols());
-
-            // Donner le focus à la fenêtre pour les touches
             requestFocus();
-
-            // Démarrer la réception des messages
             startReceivingThread();
 
         } catch (NumberFormatException ex) {
@@ -202,13 +208,13 @@ public class GameFrame extends JFrame {
             public void keyPressed(KeyEvent e) {
                 if (!connected || mySide == null) return;
                 
-                if (mySide.equals("LEFT")) { // TOP
+                if (mySide.equals("LEFT")) {
                     if (e.getKeyCode() == KeyEvent.VK_LEFT) {
                         out.println("MOVE:LEFT");
                     } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
                         out.println("MOVE:RIGHT");
                     }
-                } else if (mySide.equals("RIGHT")) { // BOTTOM
+                } else if (mySide.equals("RIGHT")) {
                     if (e.getKeyCode() == KeyEvent.VK_LEFT) {
                         out.println("MOVE:LEFT");
                     } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
@@ -243,14 +249,12 @@ public class GameFrame extends JFrame {
         }).start();
     }
 
-    // Dans processServerMessage()
     private void processServerMessage(String message) {
         if (message.startsWith("STATE:")) {
             String[] parts = message.substring(6).split(",");
             topPaddle.setX(Integer.parseInt(parts[0]));
             bottomPaddle.setX(Integer.parseInt(parts[1]));
             
-            // Recevoir position de la balle
             if (parts.length >= 4) {
                 ballX = Integer.parseInt(parts[2]);
                 ballY = Integer.parseInt(parts[3]);
@@ -262,17 +266,20 @@ public class GameFrame extends JFrame {
             topBoard.setCols(cols);
             bottomBoard.setCols(cols);
             colsField.setText(String.valueOf(cols));
+            
+            // ✨ NOUVEAU : Redimensionner la fenêtre quand un autre joueur change les colonnes
+            SwingUtilities.invokeLater(() -> resizeWindow(cols));
+            
             gamePanel.repaint();
         }
     }
 
     class GamePanel extends JPanel {
-        private final int panelWidth = GameConfig.WINDOW_WIDTH;
-        private final int panelHeight = GameConfig.WINDOW_HEIGHT;
-
+        // ✨ MODIFIÉ : Largeur dynamique basée sur le nombre de colonnes
         @Override
         public Dimension getPreferredSize() {
-            return new Dimension(panelWidth, panelHeight);
+            int dynamicWidth = topBoard.getCols() * cellSize;
+            return new Dimension(dynamicWidth, GameConfig.WINDOW_HEIGHT);
         }
 
         @Override
@@ -292,7 +299,6 @@ public class GameFrame extends JFrame {
             g.drawString("Adresse IP:", 10, 15);
             g.drawString("Port:", 10, 40);
             
-            // Statut de connexion
             if (connected) {
                 g.setColor(new Color(0, 150, 0));
                 g.drawString("Connecte - Vous etes: " + 
@@ -329,7 +335,6 @@ public class GameFrame extends JFrame {
                        GameConfig.BALL_RADIUS * 2, 
                        GameConfig.BALL_RADIUS * 2);
             
-            // Contour noir
             g.setColor(Color.BLACK);
             g.drawOval(ballX - GameConfig.BALL_RADIUS, 
                        ballY - GameConfig.BALL_RADIUS, 
