@@ -13,8 +13,16 @@ public class GameFrame extends JFrame {
     private BufferedReader in;
     private Socket socket;
 
-    private Paddle topPaddle = new Paddle(120, 50);
-    private Paddle bottomPaddle = new Paddle(120, 550);
+    public Paddle topPaddle = new Paddle(
+        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25 // même calcul que le client
+    );
+
+    public Paddle bottomPaddle = new Paddle(
+        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+        GameConfig.GAME_AREA_MAX_Y - 120 // même calcul que le client
+    );
+    
     private String mySide;
 
     private GamePanel gamePanel;
@@ -24,7 +32,7 @@ public class GameFrame extends JFrame {
     private final int topBoardY = 145;
     private final int bottomBoardY = 505;
     private final int cellSize = 60;
-    
+
     private Echequier topBoard = new Echequier(boardX, topBoardY, cellSize, cellSize, 8);
     private Echequier bottomBoard = new Echequier(boardX, bottomBoardY, cellSize, cellSize, 8);
 
@@ -53,6 +61,12 @@ public class GameFrame extends JFrame {
 
         setupConnectionForm();
         setupKeyListeners();
+
+        topBoard.initializeDefaultPieces(false);
+        bottomBoard.initializeDefaultPieces(true);
+
+        // Centrer raquettes et balle au démarrage
+        centerPaddlesAndBall(topBoard.getCols());
     }
 
     private void setupConnectionForm() {
@@ -65,7 +79,7 @@ public class GameFrame extends JFrame {
         ipField.setBounds(10, 25, 150, 25);
         portField.setBounds(10, 55, 150, 25);
         connectButton.setBounds(10, 85, 150, 25);
-        
+
         colsField.setBounds(200, 25, 100, 25);
         updateColsButton.setBounds(200, 55, 150, 25);
 
@@ -82,67 +96,65 @@ public class GameFrame extends JFrame {
         ActionListener connectAction = e -> connectToServer();
         ipField.addActionListener(connectAction);
         portField.addActionListener(connectAction);
-        
+
         colsField.addActionListener(e -> updateColumns());
+    }
+
+    // ✨ Centre les raquettes et la balle dans le panel de jeu
+    private void centerPaddlesAndBall(int cols) {
+        int panelWidth = cols * cellSize;
+        int paddleWidth = topPaddle.getWidth();
+
+        topPaddle.setX((panelWidth - paddleWidth) / 2);
+        bottomPaddle.setX((panelWidth - paddleWidth) / 2);
+
+        ballX = panelWidth / 2;
     }
 
     private void updateColumns() {
         String colsText = colsField.getText().trim();
-        
         try {
             int cols = Integer.parseInt(colsText);
-            
             if (cols < 2 || cols > 8) {
-                JOptionPane.showMessageDialog(this, 
-                    "Le nombre de colonnes doit être entre 2 et 8 !");
-                requestFocus(); // ✨ AJOUTÉ : Rendre le focus après le message
+                JOptionPane.showMessageDialog(this, "Le nombre de colonnes doit être entre 2 et 8 !");
+                requestFocus();
                 return;
             }
-            
             if (cols % 2 != 0) {
-                JOptionPane.showMessageDialog(this, 
-                    "Le nombre de colonnes doit être pair (2, 4, 6, 8) !");
-                requestFocus(); // ✨ AJOUTÉ : Rendre le focus après le message
+                JOptionPane.showMessageDialog(this, "Le nombre de colonnes doit être pair (2, 4, 6, 8) !");
+                requestFocus();
                 return;
             }
-            
-            // Mettre à jour les échiquiers
+
             topBoard.setCols(cols);
             bottomBoard.setCols(cols);
-            
-            // Redimensionner la fenêtre
+
+            topBoard.initializeDefaultPieces(false);
+            bottomBoard.initializeDefaultPieces(true);
+
+            // ✨ Centre raquettes et balle
+            centerPaddlesAndBall(cols);
+
             resizeWindow(cols);
-            
-            // Envoyer au serveur si connecté
+
             if (connected && out != null) {
                 out.println("COLS:" + cols);
             }
-            
+
             gamePanel.repaint();
-            
-            // ✨ AJOUTÉ : Rendre le focus à la fenêtre pour que le KeyListener fonctionne
             requestFocus();
-            
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, 
-                "Veuillez entrer un nombre valide !");
-            requestFocus(); // ✨ AJOUTÉ : Rendre le focus après le message
+            JOptionPane.showMessageDialog(this, "Veuillez entrer un nombre valide !");
+            requestFocus();
         }
     }
 
-    // ✨ NOUVELLE MÉTHODE : Redimensionner la fenêtre selon le nombre de colonnes
+    // ✨ Redimensionner la fenêtre selon le nombre de colonnes
     private void resizeWindow(int cols) {
-        int newWidth = cols * cellSize; // Largeur = nombre de colonnes × taille cellule
-        
-        // Mettre à jour la taille préférée du panel
+        int newWidth = cols * cellSize;
         gamePanel.setPreferredSize(new Dimension(newWidth, GameConfig.WINDOW_HEIGHT));
-        
-        // Repackager la fenêtre (ajuste automatiquement la taille)
         pack();
-        
-        // Recentrer la fenêtre
         setLocationRelativeTo(null);
-        
         System.out.println("Fenêtre redimensionnée : " + newWidth + "x" + GameConfig.WINDOW_HEIGHT);
     }
 
@@ -162,7 +174,7 @@ public class GameFrame extends JFrame {
 
         try {
             int port = Integer.parseInt(portText);
-            
+
             socket = new Socket(host, port);
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -183,8 +195,8 @@ public class GameFrame extends JFrame {
             ipField.setEnabled(false);
             portField.setEnabled(false);
             connectButton.setText("Connecté ✓");
-            
-            JOptionPane.showMessageDialog(this, 
+
+            JOptionPane.showMessageDialog(this,
                 "Connecté au serveur !\nVous êtes: " + (mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"));
 
             out.println("COLS:" + topBoard.getCols());
@@ -196,8 +208,8 @@ public class GameFrame extends JFrame {
         } catch (UnknownHostException ex) {
             JOptionPane.showMessageDialog(this, "Adresse IP invalide : " + host);
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, 
-                "Erreur de connexion au serveur\n" + host + ":" + portText + 
+            JOptionPane.showMessageDialog(this,
+                "Erreur de connexion au serveur\n" + host + ":" + portText +
                 "\n\nVérifiez que le serveur est démarré.");
         }
     }
@@ -207,7 +219,7 @@ public class GameFrame extends JFrame {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (!connected || mySide == null) return;
-                
+
                 if (mySide.equals("LEFT")) {
                     if (e.getKeyCode() == KeyEvent.VK_LEFT) {
                         out.println("MOVE:LEFT");
@@ -254,28 +266,31 @@ public class GameFrame extends JFrame {
             String[] parts = message.substring(6).split(",");
             topPaddle.setX(Integer.parseInt(parts[0]));
             bottomPaddle.setX(Integer.parseInt(parts[1]));
-            
+
             if (parts.length >= 4) {
                 ballX = Integer.parseInt(parts[2]);
                 ballY = Integer.parseInt(parts[3]);
             }
-            
+
             gamePanel.repaint();
         } else if (message.startsWith("COLS:")) {
             int cols = Integer.parseInt(message.substring(5));
             topBoard.setCols(cols);
             bottomBoard.setCols(cols);
             colsField.setText(String.valueOf(cols));
-            
-            // ✨ NOUVEAU : Redimensionner la fenêtre quand un autre joueur change les colonnes
+
+            topBoard.initializeDefaultPieces(false);
+            bottomBoard.initializeDefaultPieces(true);
+
+            // ✨ Centre raquettes et balle
+            centerPaddlesAndBall(cols);
+
             SwingUtilities.invokeLater(() -> resizeWindow(cols));
-            
             gamePanel.repaint();
         }
     }
 
     class GamePanel extends JPanel {
-        // ✨ MODIFIÉ : Largeur dynamique basée sur le nombre de colonnes
         @Override
         public Dimension getPreferredSize() {
             int dynamicWidth = topBoard.getCols() * cellSize;
@@ -285,7 +300,9 @@ public class GameFrame extends JFrame {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            
+
+            System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
+                + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
             // Fond beige clair
             g.setColor(new Color(245, 245, 220));
             g.fillRect(0, 0, getWidth(), getHeight());
@@ -293,16 +310,16 @@ public class GameFrame extends JFrame {
             // Zone d'information en haut
             g.setColor(Color.WHITE);
             g.fillRect(0, 0, getWidth(), 140);
-            
+
             g.setColor(Color.BLACK);
             g.setFont(new Font("Arial", Font.PLAIN, 11));
             g.drawString("Adresse IP:", 10, 15);
             g.drawString("Port:", 10, 40);
-            
+
             if (connected) {
                 g.setColor(new Color(0, 150, 0));
-                g.drawString("Connecte - Vous etes: " + 
-                    (mySide != null && mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"), 
+                g.drawString("Connecte - Vous etes: " +
+                    (mySide != null && mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"),
                     200, 50);
                 g.setColor(Color.BLACK);
                 g.drawString("Utilisez LEFT/RIGHT pour bouger", 200, 70);
@@ -310,7 +327,7 @@ public class GameFrame extends JFrame {
                 g.setColor(Color.RED);
                 g.drawString("Non connecte", 200, 50);
             }
-            
+
             g.setColor(Color.GRAY);
             g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
 
@@ -321,24 +338,24 @@ public class GameFrame extends JFrame {
             // Dessiner les raquettes horizontales
             int paddleTopY = topBoardY + (2 * cellSize) + 25;
             int paddleBottomY = bottomBoardY - 30;
-            
+
             g.setColor(Color.BLUE);
             g.fillRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight());
-            
+
             g.setColor(Color.RED);
             g.fillRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight());
-            
+
             // Dessiner la balle
             g.setColor(Color.WHITE);
-            g.fillOval(ballX - GameConfig.BALL_RADIUS, 
-                       ballY - GameConfig.BALL_RADIUS, 
-                       GameConfig.BALL_RADIUS * 2, 
+            g.fillOval(ballX - GameConfig.BALL_RADIUS,
+                       ballY - GameConfig.BALL_RADIUS,
+                       GameConfig.BALL_RADIUS * 2,
                        GameConfig.BALL_RADIUS * 2);
-            
+
             g.setColor(Color.BLACK);
-            g.drawOval(ballX - GameConfig.BALL_RADIUS, 
-                       ballY - GameConfig.BALL_RADIUS, 
-                       GameConfig.BALL_RADIUS * 2, 
+            g.drawOval(ballX - GameConfig.BALL_RADIUS,
+                       ballY - GameConfig.BALL_RADIUS,
+                       GameConfig.BALL_RADIUS * 2,
                        GameConfig.BALL_RADIUS * 2);
         }
     }

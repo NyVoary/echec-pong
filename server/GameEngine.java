@@ -5,8 +5,14 @@ import common.Ball;
 import common.GameConfig;
 
 public class GameEngine {
-    public Paddle topPaddle = new Paddle(180, 50);
-    public Paddle bottomPaddle = new Paddle(180, 550);
+    public Paddle topPaddle = new Paddle(
+        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25 // même calcul que le client
+    );
+    public Paddle bottomPaddle = new Paddle(
+        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+        GameConfig.GAME_AREA_MAX_Y - 120 // même calcul que le client
+    );
     public Ball ball;
     public List<ClientHandler> clients = new ArrayList<>();
     public Map<String, Player> players = new HashMap<>();
@@ -87,14 +93,17 @@ public class GameEngine {
 
     private synchronized void updateGame() {
         // Mettre à jour la balle
+        // Mettre à jour la balle
         ball.update();
+
+    System.out.println("Serveur - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
+        + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
         
         // Vérifier collision avec les paddles
-        // TOP paddle (y = 50, mais on utilise la vraie position)
-        ball.bounceOnPaddle(topPaddle.getX(), 265, topPaddle.getWidth(), topPaddle.getHeight());
-        
-        // BOTTOM paddle (y = 550, mais on utilise la vraie position)
-        ball.bounceOnPaddle(bottomPaddle.getX(), 475, bottomPaddle.getWidth(), bottomPaddle.getHeight());
+        ball.bounceOnPaddle(topPaddle.getX(), topPaddle.getY(), topPaddle.getWidth(), topPaddle.getHeight());
+
+        // BOTTOM paddle : utilise la vraie position Y
+        ball.bounceOnPaddle(bottomPaddle.getX(), bottomPaddle.getY(), bottomPaddle.getWidth(), bottomPaddle.getHeight());
         
         // Vérifier si la balle est sortie
         if (ball.isOutTop()) {
