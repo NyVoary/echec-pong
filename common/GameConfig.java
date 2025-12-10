@@ -17,7 +17,7 @@ public class GameConfig {
     
     // === FENÊTRE ===
     public static final int WINDOW_WIDTH = 480;
-    public static final int WINDOW_HEIGHT = 625;
+    public static final int WINDOW_HEIGHT = 650;
     
     // === ZONE DE JEU ===
     public static final int GAME_AREA_MIN_X = 0;

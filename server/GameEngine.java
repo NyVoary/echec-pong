@@ -116,14 +116,14 @@ public class GameEngine {
         System.out.println("Partie arretee");
     }
 
-    private synchronized void updateGame() {
+        private synchronized void updateGame() {
             ball.update();
 
-            System.out.println(
-                "Ball: x=" + ball.getX() + ", y=" + ball.getY() +
-                " | topBoard: x=" + topBoard.getX() + ", y=" + topBoard.getY() +
-                " | bottomBoard: x=" + bottomBoard.getX() + ", y=" + bottomBoard.getY()
-            );
+    System.out.println(
+        "Ball: x=" + ball.getX() + ", y=" + ball.getY() +
+        " | topBoard: x=" + topBoard.getX() + ", y=" + topBoard.getY() +
+        " | bottomBoard: x=" + bottomBoard.getX() + ", y=" + bottomBoard.getY()
+    );
 
             System.out.println("Serveur - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
                 + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
@@ -174,7 +174,13 @@ public class GameEngine {
     // === COLONNES ===
     public synchronized void setBoardCols(int cols) {
         this.boardCols = cols;
+
+        int panelWidth = cols * GameConfig.CELL_SIZE;
+        ball.setLimits(0, panelWidth, GameConfig.GAME_AREA_MIN_Y, GameConfig.GAME_AREA_MAX_Y);
+
+        // ...le reste (paddle, boards, etc.)...
         broadcastCols();
+        broadcastState();
     }
 
     public synchronized void broadcastCols() {
