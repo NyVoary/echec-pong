@@ -18,6 +18,7 @@ public class ClientHandler extends Thread {
         try {
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            
             synchronized (gameEngine.clients) {
                 gameEngine.clients.add(this);
                 if (gameEngine.clients.size() == 1) {
@@ -26,8 +27,12 @@ public class ClientHandler extends Thread {
                     playerSide = "RIGHT";
                 }
             }
+            
+            // Créer le joueur dans le moteur de jeu
+            gameEngine.addPlayer(playerSide, this);
+            
             out.println("SIDE:" + playerSide);
-            System.out.println("Client assigné côté: " + playerSide);
+            System.out.println("→ Client assigné côté: " + playerSide);
 
             gameEngine.broadcastState();
 
@@ -36,10 +41,13 @@ public class ClientHandler extends Thread {
                 processCommand(inputLine);
             }
         } catch (IOException e) {
-            System.out.println("Client déconnecté");
+            System.out.println("✗ Client déconnecté (" + playerSide + ")");
         } finally {
             synchronized (gameEngine.clients) {
                 gameEngine.clients.remove(this);
+                if (playerSide != null) {
+                    gameEngine.removePlayer(playerSide);
+                }
             }
         }
     }
@@ -48,6 +56,10 @@ public class ClientHandler extends Thread {
         if (command.startsWith("MOVE:")) {
             String direction = command.substring(5);
             gameEngine.movePaddle(playerSide, direction);
+        } else if (command.startsWith("COLS:")) {
+            int cols = Integer.parseInt(command.substring(5));
+            System.out.println("📊 Mise à jour colonnes: " + cols);
+            gameEngine.setBoardCols(cols);
         }
     }
 
