@@ -32,6 +32,9 @@ public class Ball {
         // Déplacer la balle
         x += speedX;
         y += speedY;
+
+        System.out.println("Ball position: x=" + x + ", y=" + y);
+
         
         // Rebond sur les bords gauche et droit
         if (x - radius <= minX) {
@@ -51,28 +54,58 @@ public class Ball {
             speedY = -speedY;
         }
     }
-    
-    // === REBOND SUR PADDLE ===
-    public void bounceOnPaddle(int paddleX, int paddleY, int paddleWidth, int paddleHeight) {
-        // Vérifier collision avec le paddle
-        if (x + radius >= paddleX && x - radius <= paddleX + paddleWidth) {
-            if (Math.abs(y - paddleY) <= radius + paddleHeight / 2) {
-                // Calculer où la balle a touché le paddle (gauche = -1, centre = 0, droite = 1)
-                double hitPos = (x - (paddleX + paddleWidth / 2.0)) / (paddleWidth / 2.0);
-                
-                // Ajuster l'angle selon où la balle touche
-                speedX = hitPos * 5; // Plus on touche sur les côtés, plus l'angle est prononcé
-                speedY = -speedY;    // Inverser direction verticale
-                
-                // Repositionner pour éviter bug de collision multiple
-                if (speedY > 0) {
-                    y = paddleY + paddleHeight / 2 + radius;
-                } else {
-                    y = paddleY - paddleHeight / 2 - radius;
-                }
-            }
+
+    public void bounce(int rectX, int rectY, int rectWidth, int rectHeight) {
+    // Vérifie collision avec le rectangle
+    boolean collisionX = x + radius >= rectX && x - radius <= rectX + rectWidth;
+    boolean collisionY = y + radius >= rectY && y - radius <= rectY + rectHeight;
+    if (collisionX && collisionY) {
+        // Détermine le côté du rebond (vertical ou horizontal)
+        double overlapLeft = Math.abs((x + radius) - rectX);
+        double overlapRight = Math.abs((x - radius) - (rectX + rectWidth));
+        double overlapTop = Math.abs((y + radius) - rectY);
+        double overlapBottom = Math.abs((y - radius) - (rectY + rectHeight));
+
+        // Rebond vertical si la balle touche plus le haut/bas
+        if (overlapTop < overlapLeft && overlapTop < overlapRight && overlapTop < overlapBottom) {
+            speedY = -Math.abs(speedY);
+            y = rectY - radius;
+        } else if (overlapBottom < overlapLeft && overlapBottom < overlapRight && overlapBottom < overlapTop) {
+            speedY = Math.abs(speedY);
+            y = rectY + rectHeight + radius;
+        }
+        // Rebond horizontal si la balle touche plus le côté gauche/droit
+        else if (overlapLeft < overlapTop && overlapLeft < overlapBottom && overlapLeft < overlapRight) {
+            speedX = -Math.abs(speedX);
+            x = rectX - radius;
+        } else if (overlapRight < overlapTop && overlapRight < overlapBottom && overlapRight < overlapLeft) {
+            speedX = Math.abs(speedX);
+            x = rectX + rectWidth + radius;
         }
     }
+}
+    
+    // === REBOND SUR PADDLE ===
+    // public void bounceOnPaddle(int paddleX, int paddleY, int paddleWidth, int paddleHeight) {
+    //     // Vérifier collision avec le paddle
+    //     if (x + radius >= paddleX && x - radius <= paddleX + paddleWidth) {
+    //         if (Math.abs(y - paddleY) <= radius + paddleHeight / 2) {
+    //             // Calculer où la balle a touché le paddle (gauche = -1, centre = 0, droite = 1)
+    //             double hitPos = (x - (paddleX + paddleWidth / 2.0)) / (paddleWidth / 2.0);
+                
+    //             // Ajuster l'angle selon où la balle touche
+    //             speedX = hitPos * 5; // Plus on touche sur les côtés, plus l'angle est prononcé
+    //             speedY = -speedY;    // Inverser direction verticale
+                
+    //             // Repositionner pour éviter bug de collision multiple
+    //             if (speedY > 0) {
+    //                 y = paddleY + paddleHeight / 2 + radius;
+    //             } else {
+    //                 y = paddleY - paddleHeight / 2 - radius;
+    //             }
+    //         }
+    //     }
+    // }
     
     // === VÉRIFIER SI SORTIE ===
     public boolean isOutTop() {
