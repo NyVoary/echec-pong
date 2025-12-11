@@ -463,14 +463,15 @@ public Paddle bottomPaddle = new Paddle(
                 }
                 fw.flush();
                 JOptionPane.showMessageDialog(this, "Vies enregistrées !");
-                // ✨ Demande au serveur de recharger les vies
-                if (out != null) {
-                    out.println("RELOAD_HP");
+                // ✨ Correction : utiliser la référence du parent
+                if (GameFrame.this.out != null) {
+                    GameFrame.this.out.println("RELOAD_HP");
                 }
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
             }
             dispose();
+            GameFrame.this.requestFocus();
         }
     }
 }

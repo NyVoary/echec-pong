@@ -6,9 +6,12 @@ mkdir out
 REM Compilation des sources
 javac -d out common/*.java server/*.java client/*.java
 
+REM Copie les images dans le dossier de sortie
+xcopy pieces out\pieces /E /I /Y
+
 REM === JAR SERVEUR ===
 echo Main-Class: server.ServerMain > out/MANIFEST_SERVER.MF
-jar cfm echec-pong-server.jar out/MANIFEST_SERVER.MF -C out .
+jar cfm echec-pong-server.jar out/MANIFEST_SERVER.MF -C out . 
 
 REM === JAR CLIENT ===
 echo Main-Class: client.ClientMain > out/MANIFEST_CLIENT.MF
