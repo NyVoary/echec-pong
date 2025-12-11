@@ -339,13 +339,23 @@ public Paddle bottomPaddle = new Paddle(
             bottomBoard.setCols(cols);
             colsField.setText(String.valueOf(cols));
 
-            topBoard.initializeDefaultPieces(false);
-            bottomBoard.initializeDefaultPieces(true);
+            topBoard.initializeDefaultPieces(false,null);
+            bottomBoard.initializeDefaultPieces(true,null);
 
             // NE PAS recalculer la largeur ou centrer les paddles ici !
             SwingUtilities.invokeLater(() -> resizeWindow(cols));
             gamePanel.repaint();
         }
+        else if (message.startsWith("GAMEOVER:WINNER:")) {
+        String winnerSide = message.substring("GAMEOVER:WINNER:".length());
+        String msg;
+        if (mySide != null && mySide.equals(winnerSide)) {
+            msg = "Félicitations ! Vous avez gagné !";
+        } else {
+            msg = "Dommage, vous avez perdu.";
+        }
+        JOptionPane.showMessageDialog(this, "Game Over\n" + msg, "Game Over", JOptionPane.INFORMATION_MESSAGE);
+    }
     }
 
     class GamePanel extends JPanel {
@@ -359,8 +369,8 @@ public Paddle bottomPaddle = new Paddle(
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
 
-            System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
-                + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
+            // System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
+            //     + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
             // Fond beige clair
             g.setColor(new Color(245, 245, 220));
             g.fillRect(0, 0, getWidth(), getHeight());

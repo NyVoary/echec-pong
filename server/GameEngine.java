@@ -40,6 +40,8 @@ public class GameEngine {
     public Ball ball;
     public List<ClientHandler> clients = new ArrayList<>();
     public Map<String, Player> players = new HashMap<>();
+    public Player topPlayer;      // Ajouté
+    public Player bottomPlayer;   // Ajouté
     private int boardCols = 8;
     
     private boolean gameRunning = false;
@@ -59,9 +61,9 @@ public class GameEngine {
             GameConfig.GAME_AREA_MIN_Y,
             GameConfig.GAME_AREA_MAX_Y
         );
-
-        topBoard.initializeDefaultPieces(false);
-        bottomBoard.initializeDefaultPieces(true);
+        // Utilise les objets Player pour initialiser les pièces
+        topBoard.initializeDefaultPieces(false, topPlayer);
+        bottomBoard.initializeDefaultPieces(true, bottomPlayer);
     }
 
     public void reloadPieceHP() {
@@ -85,6 +87,11 @@ public class GameEngine {
         String id = "PLAYER_" + side + "_" + System.currentTimeMillis();
         Player player = new Player(id, side, handler);
         players.put(side, player);
+        if (side.equals("LEFT")) {
+            topPlayer = player;
+        } else if (side.equals("RIGHT")) {
+            bottomPlayer = player;
+        }
         System.out.println("✓ Joueur ajouté: " + player);
         
         // Démarrer la partie si 2 joueurs
@@ -94,11 +101,15 @@ public class GameEngine {
     }
 
     public Player getPlayer(String side) {
-        return players.get(side);
+        if (side.equals("LEFT")) return topPlayer;
+        if (side.equals("RIGHT")) return bottomPlayer;
+        return null;
     }
 
     public synchronized void removePlayer(String side) {
         Player removed = players.remove(side);
+        if (side.equals("LEFT")) topPlayer = null;
+        if (side.equals("RIGHT")) bottomPlayer = null;
         if (removed != null) {
             System.out.println("✗ Joueur retiré: " + removed.getName());
         }
@@ -171,10 +182,24 @@ public class GameEngine {
             }
             resetBall();
         }
+
+        Player winner = getWinnerIfKingDead();
+        if (winner != null) {
+            broadcastGameOver(winner);
+            stopGame();
+            return;
+        }
         
         // Diffuser l'état
         broadcastState();
     }
+
+    private void broadcastGameOver(Player winner) {
+    String msg = "GAMEOVER:WINNER:" + winner.getSide();
+    for (ClientHandler client : clients) {
+        client.sendMessage(msg);
+    }
+}
 
     private void resetBall() {
         ball.reset(GameConfig.BALL_START_X, GameConfig.BALL_START_Y);
@@ -200,6 +225,12 @@ public class GameEngine {
         ball.setLimits(0, panelWidth, GameConfig.GAME_AREA_MIN_Y, GameConfig.GAME_AREA_MAX_Y);
 
         // ...le reste (paddle, boards, etc.)...
+            // Réinitialise les échiquiers avec les bons joueurs
+        topBoard.setCols(cols);
+        bottomBoard.setCols(cols);
+        topBoard.initializeDefaultPieces(false, topPlayer);
+        bottomBoard.initializeDefaultPieces(true, bottomPlayer);
+
         broadcastCols();
         broadcastState();
     }
@@ -218,6 +249,34 @@ public class GameEngine {
             client.sendMessage(state);
         }
     }
+
+    public Player getWinnerIfKingDead() {
+    boolean topKingAlive = false;
+    boolean bottomKingAlive = false;
+
+    // Vérifie si le roi du haut est vivant
+    for (ChessPiece piece : topBoard.getPieces()) {
+        if (piece.getType() == PieceType.KING && piece.isAlive()) {
+            topKingAlive = true;
+            break;
+        }
+    }
+    // Vérifie si le roi du bas est vivant
+    for (ChessPiece piece : bottomBoard.getPieces()) {
+        if (piece.getType() == PieceType.KING && piece.isAlive()) {
+            bottomKingAlive = true;
+            break;
+        }
+    }
+
+    // Si le roi du haut est mort, le joueur du bas gagne
+    if (!topKingAlive && bottomPlayer != null) return bottomPlayer;
+    // Si le roi du bas est mort, le joueur du haut gagne
+    if (!bottomKingAlive && topPlayer != null) return topPlayer;
+
+    // Aucun gagnant pour l'instant
+    return null;
+}
 
 public String getGameState() {
     StringBuilder sb = new StringBuilder();

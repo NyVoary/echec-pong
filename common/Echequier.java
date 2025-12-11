@@ -7,6 +7,7 @@ import java.util.List;
 import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
+import server.Player; // Ajoute cet import
 
 public class Echequier {
     private int x, y, cellWidth, cellHeight;
@@ -71,9 +72,8 @@ public class Echequier {
     }
 
     // Initialise les pièces comme un vrai échiquier (pour 8 colonnes)
-    public void initializeDefaultPieces(boolean isWhite) {
+    public void initializeDefaultPieces(boolean isWhite, Player joueur) {
         pieces.clear();
-        // Réinitialise les cases (enlève les pièces)
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < cols; col++) {
                 cases[row][col].setPiece(null);
@@ -115,26 +115,24 @@ public class Echequier {
         System.out.println();
 
         if (!isWhite) {
-            // Haut : pièces majeures ligne 0, pions ligne 1
             for (int col = 0; col < cols; col++) {
-                addPiece(createPiece(layout[col], false, 0, col));
+                addPiece(createPiece(layout[col], false, 0, col, joueur));
             }
             for (int col = 0; col < cols; col++) {
-                addPiece(createPiece(PieceType.PAWN, false, 1, col));
+                addPiece(createPiece(PieceType.PAWN, false, 1, col, joueur));
             }
         } else {
-            // Bas : pions ligne 0, pièces majeures ligne 1
             for (int col = 0; col < cols; col++) {
-                addPiece(createPiece(PieceType.PAWN, true, 0, col));
+                addPiece(createPiece(PieceType.PAWN, true, 0, col, joueur));
             }
             for (int col = 0; col < cols; col++) {
-                addPiece(createPiece(layout[col], true, 1, col));
+                addPiece(createPiece(layout[col], true, 1, col, joueur));
             }
         }
     }
 
     // Crée une pièce avec son image
-    private ChessPiece createPiece(PieceType type, boolean isWhite, int row, int col) {
+    private ChessPiece createPiece(PieceType type, boolean isWhite, int row, int col, Player joueur) {
         BufferedImage img = null;
         try {
             String path = "pieces/" + type.getImageFileName(isWhite);
@@ -142,7 +140,7 @@ public class Echequier {
         } catch (IOException e) {
             System.err.println("Image manquante: " + type.getImageFileName(isWhite));
         }
-        return new ChessPiece(type, img, null, row, col, isWhite);
+        return new ChessPiece(type, img, joueur, row, col, isWhite);
     }
 
     /**
