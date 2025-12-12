@@ -51,23 +51,31 @@ public enum PieceType {
     public int getDefaultValue() { return defaultValue; }
     public int getDefaultMaxHP() { return defaultMaxHP; }
 
-    public static void loadHPFromFile(String path) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split("=");
-                if (parts.length == 2) {
-                    String name = parts[0].trim();
-                    int hp = Integer.parseInt(parts[1].trim());
-                    for (PieceType type : PieceType.values()) {
-                        if (type.name().equalsIgnoreCase(name)) {
-                            type.setMaxHP(hp);
-                        }
-                    }
-                }
+    // public static void loadHPFromFile(String path) {
+    //     try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+    //         String line;
+    //         while ((line = reader.readLine()) != null) {
+    //             String[] parts = line.split("=");
+    //             if (parts.length == 2) {
+    //                 String name = parts[0].trim();
+    //                 int hp = Integer.parseInt(parts[1].trim());
+    //                 for (PieceType type : PieceType.values()) {
+    //                     if (type.name().equalsIgnoreCase(name)) {
+    //                         type.setMaxHP(hp);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     } catch (Exception e) {
+    //         System.out.println("Erreur lecture vie.txt : " + e.getMessage());
+    //     }
+    // }
+
+    public static void applyHPFromMap(Map<String, Integer> hpMap) {
+        for (PieceType type : PieceType.values()) {
+            if (hpMap.containsKey(type.name())) {
+                type.setMaxHP(hpMap.get(type.name()));
             }
-        } catch (Exception e) {
-            System.out.println("Erreur lecture vie.txt : " + e.getMessage());
         }
     }
     

@@ -1,5 +1,9 @@
 package server;
+
 import java.util.*;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import configservice.ConfigServiceRemote;
 import common.Paddle;
 import common.Ball;
 import common.GameConfig;
@@ -48,8 +52,8 @@ public class GameEngine {
     private Thread gameLoopThread;
 
     public GameEngine() {
-        // Charger les PV depuis le fichier AVANT d'initialiser les pièces
-        PieceType.loadHPFromFile("config/vie.txt");
+        // Charger la config et les HP depuis l'EJB
+        loadConfigFromEJB();
 
         // Initialiser la balle
         ball = new Ball(
@@ -66,21 +70,60 @@ public class GameEngine {
         bottomBoard.initializeDefaultPieces(true, bottomPlayer);
     }
 
-    public void reloadPieceHP() {
-    PieceType.loadHPFromFile("config/vie.txt");
-    // Met à jour les PV max de toutes les pièces existantes
-    for (ChessPiece piece : topBoard.getPieces()) {
-        if (piece.isAlive()) {
-            piece.setCurrentHP(piece.getType().getMaxHP());
+    public void loadConfigFromEJB() {
+    try {
+        Properties props = new Properties();
+        props.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
+        props.put(Context.PROVIDER_URL, "http-remoting://localhost:8080");
+        Context ctx = new InitialContext(props);
+
+        ConfigServiceRemote configService = (ConfigServiceRemote) ctx.lookup(
+            "ejb:/configservice//ConfigServiceBean!configservice.ConfigServiceRemote"
+        );
+
+        Map<String, String> config = configService.getGameConfig();
+        Map<String, Integer> hpMap = configService.getPieceHP();
+
+        // Affiche toutes les configs récupérées
+        System.out.println("=== CONFIGURATION JEU (depuis EJB) ===");
+        for (Map.Entry<String, String> entry : config.entrySet()) {
+            System.out.println(entry.getKey() + " = " + entry.getValue());
         }
-    }
-    for (ChessPiece piece : bottomBoard.getPieces()) {
-        if (piece.isAlive()) {
-            piece.setCurrentHP(piece.getType().getMaxHP());
+        System.out.println("=== HP DES PIECES (depuis EJB) ===");
+        for (Map.Entry<String, Integer> entry : hpMap.entrySet()) {
+            System.out.println(entry.getKey() + " = " + entry.getValue());
         }
+        System.out.println("=======================================");
+
+        // Applique la config à GameConfig
+        common.GameConfig.NORMAL_SPEED = Integer.parseInt(config.get("NORMAL_SPEED"));
+        // ... (tous les autres paramètres) ...
+
+        // Applique les HP aux pièces via PieceType
+        common.PieceType.applyHPFromMap(hpMap);
+
+        System.out.println("Configuration chargée depuis EJB !");
+    } catch (Exception e) {
+        System.out.println("Erreur chargement config EJB : " + e.getMessage());
+        // Optionnel : fallback sur les fichiers si besoin
     }
-    broadcastState();
 }
+
+//     public void reloadPieceHP() {
+//     PieceType.loadHPFromFile("config/vie.txt");
+//     // Met à jour les PV max de toutes les pièces existantes
+//     for (ChessPiece piece : topBoard.getPieces()) {
+//         if (piece.isAlive()) {
+//             piece.setCurrentHP(piece.getType().getMaxHP());
+//         }
+//     }
+//     for (ChessPiece piece : bottomBoard.getPieces()) {
+//         if (piece.isAlive()) {
+//             piece.setCurrentHP(piece.getType().getMaxHP());
+//         }
+//     }
+//     broadcastState();
+// }
 
     // === GESTION DES JOUEURS ===
     public synchronized void addPlayer(String side, ClientHandler handler) {

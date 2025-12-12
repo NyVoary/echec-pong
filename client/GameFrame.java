@@ -339,8 +339,8 @@ public Paddle bottomPaddle = new Paddle(
             bottomBoard.setCols(cols);
             colsField.setText(String.valueOf(cols));
 
-            topBoard.initializeDefaultPieces(false,null);
-            bottomBoard.initializeDefaultPieces(true,null);
+            // topBoard.initializeDefaultPieces(false,null);
+            // bottomBoard.initializeDefaultPieces(true,null);
 
             // NE PAS recalculer la largeur ou centrer les paddles ici !
             SwingUtilities.invokeLater(() -> resizeWindow(cols));
@@ -355,6 +355,23 @@ public Paddle bottomPaddle = new Paddle(
             msg = "Dommage, vous avez perdu.";
         }
         JOptionPane.showMessageDialog(this, "Game Over\n" + msg, "Game Over", JOptionPane.INFORMATION_MESSAGE);
+    }
+    else if (message.startsWith("HP:")) {
+        String[] parts = message.substring(3).split(",");
+        for (String part : parts) {
+            if (part.contains("=")) {
+                String[] kv = part.split("=");
+                try {
+                    PieceType type = PieceType.valueOf(kv[0]);
+                    int hp = Integer.parseInt(kv[1]);
+                    type.setMaxHP(hp);
+                } catch (Exception ignored) {}
+            }
+        }
+        // Réinitialise les pièces avec les bons HP max
+        topBoard.initializeDefaultPieces(false, null);
+        bottomBoard.initializeDefaultPieces(true, null);
+        gamePanel.repaint();
     }
     }
 
