@@ -1,6 +1,9 @@
 package common;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
 import server.Player; // ou String ownerSide si tu ne veux pas dépendre du serveur
 
 public class ChessPiece {
@@ -14,7 +17,18 @@ public class ChessPiece {
 
     public ChessPiece(PieceType type, BufferedImage image, Player joueur, int row, int col, boolean isWhite) {
         this.type = type;
-        this.image = image;
+        // Charge l'image automatiquement si elle n'est pas fournie
+        if (image == null) {
+            try {
+                String path = "pieces/" + type.getImageFileName(isWhite);
+                this.image = ImageIO.read(new File(path));
+            } catch (IOException e) {
+                System.err.println("Image manquante: " + type.getImageFileName(isWhite));
+                this.image = null;
+            }
+        } else {
+            this.image = image;
+        }
         this.joueur = joueur;
         this.currentHP = type.getMaxHP();
         this.row = row;

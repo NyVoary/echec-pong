@@ -1,6 +1,7 @@
 package server;
 import java.io.*;
 import java.net.*;
+import common.PieceType; // Ajoute cet import
 
 public class ClientHandler extends Thread {
     private Socket socket;
@@ -34,6 +35,13 @@ public class ClientHandler extends Thread {
             out.println("SIDE:" + playerSide);
             System.out.println("→ Client assigné côté: " + playerSide);
 
+            // Envoie les HP max de chaque type au client
+            StringBuilder hpMsg = new StringBuilder("HP:");
+            for (PieceType type : PieceType.values()) {
+                hpMsg.append(type.name()).append("=").append(type.getMaxHP()).append(",");
+            }
+            out.println(hpMsg.toString());
+
             gameEngine.broadcastState();
 
             String inputLine;
@@ -62,7 +70,7 @@ public class ClientHandler extends Thread {
             gameEngine.setBoardCols(cols);
         }
         else if (command.equals("RELOAD_HP")) {
-            gameEngine.reloadPieceHP();
+            gameEngine.loadConfigFromEJB();
         }
     }
 
