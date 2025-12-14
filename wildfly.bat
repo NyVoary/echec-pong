@@ -3,7 +3,7 @@
 REM Démarre WildFly et déploie le jar EJB
 
 REM Adapter ce chemin si besoin
-set WILDFLY_HOME=C:\wildfly-37.0.1.Final
+set WILDFLY_HOME=D:\wildfly-37.0.1.Final
 
 REM Démarrer WildFly en arrière-plan (ouvre une nouvelle fenêtre)
 start "" "%WILDFLY_HOME%\bin\standalone.bat"
