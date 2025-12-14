@@ -12,35 +12,10 @@ import common.ChessPiece;
 import common.PieceType;
 
 public class GameEngine {
-    public Paddle topPaddle = new Paddle(
-        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
-        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25,
-        GameConfig.PADDLE_WIDTH,
-        GameConfig.PADDLE_HEIGHT
-    );
-
-    public Paddle bottomPaddle = new Paddle(
-        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
-        GameConfig.BOTTOM_BOARD_Y - 30,
-        GameConfig.PADDLE_WIDTH,
-        GameConfig.PADDLE_HEIGHT
-    );
-
-    public Echequier topBoard = new Echequier(
-        GameConfig.BOARD_X,
-        GameConfig.TOP_BOARD_Y,
-        GameConfig.CELL_SIZE,
-        GameConfig.CELL_SIZE,
-        8
-    );
-    public Echequier bottomBoard = new Echequier(
-        GameConfig.BOARD_X,
-        GameConfig.BOTTOM_BOARD_Y,
-        GameConfig.CELL_SIZE,
-        GameConfig.CELL_SIZE,
-        8
-    );
-
+    public Paddle topPaddle;
+    public Paddle bottomPaddle;
+    public Echequier topBoard;
+    public Echequier bottomBoard;
     public Ball ball;
     public List<ClientHandler> clients = new ArrayList<>();
     public Map<String, Player> players = new HashMap<>();
@@ -55,7 +30,33 @@ public class GameEngine {
         // Charger la config et les HP depuis l'EJB
         loadConfigFromEJB();
 
-        // Initialiser la balle
+        // Initialiser les paddles et boards AVEC la bonne config
+        topPaddle = new Paddle(
+            GameConfig.BOARD_X + (GameConfig.CELL_SIZE * 2), // ou la formule que tu veux
+            GameConfig.TOP_BOARD_Y + (2 * GameConfig.CELL_SIZE) + 25,
+            GameConfig.PADDLE_WIDTH,
+            GameConfig.PADDLE_HEIGHT
+        );
+        bottomPaddle = new Paddle(
+            GameConfig.BOARD_X + (GameConfig.CELL_SIZE * 2),
+            GameConfig.BOTTOM_BOARD_Y - 30,
+            GameConfig.PADDLE_WIDTH,
+            GameConfig.PADDLE_HEIGHT
+        );
+        topBoard = new Echequier(
+            GameConfig.BOARD_X,
+            GameConfig.TOP_BOARD_Y,
+            GameConfig.CELL_SIZE,
+            GameConfig.CELL_SIZE,
+            8
+        );
+        bottomBoard = new Echequier(
+            GameConfig.BOARD_X,
+            GameConfig.BOTTOM_BOARD_Y,
+            GameConfig.CELL_SIZE,
+            GameConfig.CELL_SIZE,
+            8
+        );
         ball = new Ball(
             GameConfig.BALL_START_X, 
             GameConfig.BALL_START_Y, 
@@ -70,60 +71,64 @@ public class GameEngine {
         bottomBoard.initializeDefaultPieces(true, bottomPlayer);
     }
 
-    public void loadConfigFromEJB() {
-    try {
-        Properties props = new Properties();
-        props.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
-        props.put(Context.PROVIDER_URL, "http-remoting://localhost:8080");
-        Context ctx = new InitialContext(props);
+    public void loadConfigFromEJB() { //alea 1
+        try {
+            Properties props = new Properties();
+            props.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
+            props.put(Context.PROVIDER_URL, "http-remoting://localhost:8080");
+            Context ctx = new InitialContext(props);
 
-        ConfigServiceRemote configService = (ConfigServiceRemote) ctx.lookup(
-            "ejb:/configservice//ConfigServiceBean!configservice.ConfigServiceRemote"
-        );
+            ConfigServiceRemote configService = (ConfigServiceRemote) ctx.lookup(
+                "ejb:/configservice//ConfigServiceBean!configservice.ConfigServiceRemote"
+            );
 
-        Map<String, String> config = configService.getGameConfig();
-        Map<String, Integer> hpMap = configService.getPieceHP();
+            Map<String, String> config = configService.getGameConfig();
+            Map<String, Integer> hpMap = configService.getPieceHP();
 
-        // Affiche toutes les configs récupérées
-        System.out.println("=== CONFIGURATION JEU (depuis EJB) ===");
-        for (Map.Entry<String, String> entry : config.entrySet()) {
-            System.out.println(entry.getKey() + " = " + entry.getValue());
+            // Affiche toutes les configs récupérées
+            System.out.println("=== CONFIGURATION JEU (depuis EJB) ===");
+            for (Map.Entry<String, String> entry : config.entrySet()) {
+                System.out.println(entry.getKey() + " = " + entry.getValue());
+            }
+            System.out.println("=== HP DES PIECES (depuis EJB) ===");
+            for (Map.Entry<String, Integer> entry : hpMap.entrySet()) {
+                System.out.println(entry.getKey() + " = " + entry.getValue());
+            }
+            System.out.println("=======================================");
+
+            // Applique la config à GameConfig
+            common.GameConfig.NORMAL_SPEED       = Integer.parseInt(config.get("NORMAL_SPEED"));
+            common.GameConfig.BOOST_SPEED        = Integer.parseInt(config.get("BOOST_SPEED"));
+            common.GameConfig.PADDLE_WIDTH       = Integer.parseInt(config.get("PADDLE_WIDTH"));
+            common.GameConfig.PADDLE_HEIGHT      = Integer.parseInt(config.get("PADDLE_HEIGHT"));
+            common.GameConfig.BALL_RADIUS        = Integer.parseInt(config.get("BALL_RADIUS"));
+            common.GameConfig.BALL_INITIAL_SPEED = Double.parseDouble(config.get("BALL_INITIAL_SPEED"));
+            common.GameConfig.BALL_START_X       = Integer.parseInt(config.get("BALL_START_X"));
+            common.GameConfig.BALL_START_Y       = Integer.parseInt(config.get("BALL_START_Y"));
+            common.GameConfig.WINDOW_WIDTH       = Integer.parseInt(config.get("WINDOW_WIDTH"));
+            common.GameConfig.WINDOW_HEIGHT      = Integer.parseInt(config.get("WINDOW_HEIGHT"));
+            common.GameConfig.GAME_AREA_MIN_X    = Integer.parseInt(config.get("GAME_AREA_MIN_X"));
+            common.GameConfig.GAME_AREA_MAX_X    = Integer.parseInt(config.get("GAME_AREA_MAX_X"));
+            common.GameConfig.GAME_AREA_MIN_Y    = Integer.parseInt(config.get("GAME_AREA_MIN_Y"));
+            common.GameConfig.GAME_AREA_MAX_Y    = Integer.parseInt(config.get("GAME_AREA_MAX_Y"));
+            common.GameConfig.DEFAULT_HOST       = config.get("DEFAULT_HOST");
+            common.GameConfig.DEFAULT_PORT       = Integer.parseInt(config.get("DEFAULT_PORT"));
+            common.GameConfig.TICK_RATE          = Integer.parseInt(config.get("TICK_RATE"));
+            common.GameConfig.TICK_DELAY         = Integer.parseInt(config.get("TICK_DELAY"));
+            common.GameConfig.BOARD_X            = Integer.parseInt(config.get("BOARD_X"));
+            common.GameConfig.TOP_BOARD_Y        = Integer.parseInt(config.get("TOP_BOARD_Y"));
+            common.GameConfig.BOTTOM_BOARD_Y     = Integer.parseInt(config.get("BOTTOM_BOARD_Y"));
+            common.GameConfig.CELL_SIZE          = Integer.parseInt(config.get("CELL_SIZE"));
+
+            // Applique les HP aux pièces via PieceType
+            common.PieceType.applyHPFromMap(hpMap);
+
+            System.out.println("Configuration chargée depuis EJB !");
+        } catch (Exception e) {
+            System.out.println("Erreur chargement config EJB : " + e.getMessage());
+            // Optionnel : fallback sur les fichiers si besoin
         }
-        System.out.println("=== HP DES PIECES (depuis EJB) ===");
-        for (Map.Entry<String, Integer> entry : hpMap.entrySet()) {
-            System.out.println(entry.getKey() + " = " + entry.getValue());
-        }
-        System.out.println("=======================================");
-
-        // Applique la config à GameConfig
-        common.GameConfig.NORMAL_SPEED = Integer.parseInt(config.get("NORMAL_SPEED"));
-        // ... (tous les autres paramètres) ...
-
-        // Applique les HP aux pièces via PieceType
-        common.PieceType.applyHPFromMap(hpMap);
-
-        System.out.println("Configuration chargée depuis EJB !");
-    } catch (Exception e) {
-        System.out.println("Erreur chargement config EJB : " + e.getMessage());
-        // Optionnel : fallback sur les fichiers si besoin
     }
-}
-
-//     public void reloadPieceHP() {
-//     PieceType.loadHPFromFile("config/vie.txt");
-//     // Met à jour les PV max de toutes les pièces existantes
-//     for (ChessPiece piece : topBoard.getPieces()) {
-//         if (piece.isAlive()) {
-//             piece.setCurrentHP(piece.getType().getMaxHP());
-//         }
-//     }
-//     for (ChessPiece piece : bottomBoard.getPieces()) {
-//         if (piece.isAlive()) {
-//             piece.setCurrentHP(piece.getType().getMaxHP());
-//         }
-//     }
-//     broadcastState();
-// }
 
     // === GESTION DES JOUEURS ===
     public synchronized void addPlayer(String side, ClientHandler handler) {
@@ -200,8 +205,9 @@ public class GameEngine {
                 " | bottomBoard: x=" + bottomBoard.getX() + ", y=" + bottomBoard.getY()
             );
 
-            System.out.println("Serveur - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
-                + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
+            System.out.println("Serveur - Ball: x=" + ball.getX() + ", y=" + ball.getY());
+            System.out.println("Serveur - topPaddle: x=" + topPaddle.getX() + ", y=" + topPaddle.getY());
+            System.out.println("Serveur - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + bottomPaddle.getY());
 
             ball.bounce(topPaddle.getX(), topPaddle.getY(), topPaddle.getWidth(), topPaddle.getHeight());
             ball.bounce(bottomPaddle.getX(), bottomPaddle.getY(), bottomPaddle.getWidth(), bottomPaddle.getHeight());

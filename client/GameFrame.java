@@ -17,32 +17,21 @@ public class GameFrame extends JFrame {
     private BufferedReader in;
     private Socket socket;
 
-    public Paddle topPaddle = new Paddle(
-        (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
-        GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25,
-        GameConfig.PADDLE_WIDTH,
-        GameConfig.PADDLE_HEIGHT
-    );
+    public Paddle topPaddle;
+    public Paddle bottomPaddle;
 
-public Paddle bottomPaddle = new Paddle(
-    (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
-    GameConfig.BOTTOM_BOARD_Y - 30,
-    GameConfig.PADDLE_WIDTH,
-    GameConfig.PADDLE_HEIGHT
-);
-    
     private String mySide;
 
     private GamePanel gamePanel;
 
     // Position et dimensions des échiquiers
-    private final int boardX = GameConfig.BOARD_X;
-    private final int topBoardY = GameConfig.TOP_BOARD_Y;
-    private final int bottomBoardY = GameConfig.BOTTOM_BOARD_Y;
-    private final int cellSize = GameConfig.CELL_SIZE;
+    private int boardX;
+    private int topBoardY;
+    private int bottomBoardY;
+    private int cellSize;
 
-    private Echequier topBoard = new Echequier(boardX, topBoardY, cellSize, cellSize, 8);
-    private Echequier bottomBoard = new Echequier(boardX, bottomBoardY, cellSize, cellSize, 8);
+    private Echequier topBoard;
+    private Echequier bottomBoard;
 
     // Variables pour le formulaire
     private JTextField ipField;
@@ -53,34 +42,40 @@ public Paddle bottomPaddle = new Paddle(
     private JButton vieConfigButton; // Ajoute ce bouton
     private boolean connected = false;
 
-    private int ballX = GameConfig.BALL_START_X;
-    private int ballY = GameConfig.BALL_START_Y;
+    private int ballX;
+    private int ballY;
 
     public GameFrame() {
         setTitle("Échec Pong - Client");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        topBoard.setRowOwners("J2", "J2");
-        bottomBoard.setRowOwners("J1", "J1");
+        // Taille par défaut (avant d'avoir la vraie config)
+        setSize(800, 600);
+        setResizable(false);
+        setLocationRelativeTo(null);
 
-        // Utilise BorderLayout pour centrer le panel de jeu
         setLayout(new BorderLayout());
         gamePanel = new GamePanel();
         add(gamePanel, BorderLayout.CENTER);
 
-        // Taille fixe de la fenêtre
-        setSize(GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
-        setResizable(false);
-        setLocationRelativeTo(null);
-
         setupConnectionForm();
         setupKeyListeners();
 
-        // Suppression de l'initialisation locale des pièces
-        // topBoard.initializeDefaultPieces(false);
-        // bottomBoard.initializeDefaultPieces(true);
+        // Initialisation temporaire (sera écrasée après réception de la config)
+        boardX = 0;
+        topBoardY = 0;
+        bottomBoardY = 0;
+        cellSize = 60;
+        topBoard = new Echequier(boardX, topBoardY, cellSize, cellSize, 8);
+        bottomBoard = new Echequier(boardX, bottomBoardY, cellSize, cellSize, 8);
+        topBoard.setRowOwners("J2", "J2");
+        bottomBoard.setRowOwners("J1", "J1");
 
-        // centerPaddlesAndBall(topBoard.getCols());
+        // Paddles et balles temporaires (seront recréés après config)
+        topPaddle = new Paddle(0, 0, 100, 15);
+        bottomPaddle = new Paddle(0, 0, 100, 15);
+        ballX = 0;
+        ballY = 0;
     }
 
     private void setupConnectionForm() {
@@ -239,29 +234,31 @@ public Paddle bottomPaddle = new Paddle(
         }
     }
 
-    private void setupKeyListeners() {
-        addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (!connected || mySide == null) return;
+private void setupKeyListeners() {
+    addKeyListener(new KeyAdapter() {
+        @Override
+        public void keyPressed(KeyEvent e) {
+            if (!connected || mySide == null) return;
 
-                if (mySide.equals("LEFT")) {
-                    if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                        out.println("MOVE:LEFT");
-                    } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-                        out.println("MOVE:RIGHT");
-                    }
-                } else if (mySide.equals("RIGHT")) {
-                    if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                        out.println("MOVE:LEFT");
-                    } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-                        out.println("MOVE:RIGHT");
-                    }
+            if (mySide.equals("LEFT")) {
+                // Joueur 1 : touches fléchées
+                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                    out.println("MOVE:LEFT");
+                } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                    out.println("MOVE:RIGHT");
+                }
+            } else if (mySide.equals("RIGHT")) {
+                // Joueur 2 : touches S (gauche) et D (droite)
+                if (e.getKeyCode() == KeyEvent.VK_S) {
+                    out.println("MOVE:LEFT");
+                } else if (e.getKeyCode() == KeyEvent.VK_D) {
+                    out.println("MOVE:RIGHT");
                 }
             }
-        });
-        setFocusable(true);
-    }
+        }
+    });
+    setFocusable(true);
+}
 
     private void startReceivingThread() {
         new Thread(() -> {
@@ -286,7 +283,82 @@ public Paddle bottomPaddle = new Paddle(
         }).start();
     }
 
+    private void recreateComponentsWithConfig() {
+        // Met à jour les variables de position/dimension
+        boardX = GameConfig.BOARD_X;
+        topBoardY = GameConfig.TOP_BOARD_Y;
+        bottomBoardY = GameConfig.BOTTOM_BOARD_Y;
+        cellSize = GameConfig.CELL_SIZE;
+
+        // Recrée paddles
+        topPaddle = new Paddle(
+            (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+            GameConfig.GAME_AREA_MIN_Y + 2 * 60 + 25,
+            GameConfig.PADDLE_WIDTH,
+            GameConfig.PADDLE_HEIGHT
+        );
+        bottomPaddle = new Paddle(
+            (GameConfig.WINDOW_WIDTH - GameConfig.PADDLE_WIDTH) / 2,
+            GameConfig.BOTTOM_BOARD_Y - 30,
+            GameConfig.PADDLE_WIDTH,
+            GameConfig.PADDLE_HEIGHT
+        );
+        // Recrée boards
+        topBoard = new Echequier(GameConfig.BOARD_X, GameConfig.TOP_BOARD_Y, GameConfig.CELL_SIZE, GameConfig.CELL_SIZE, 8);
+        bottomBoard = new Echequier(GameConfig.BOARD_X, GameConfig.BOTTOM_BOARD_Y, GameConfig.CELL_SIZE, GameConfig.CELL_SIZE, 8);
+        topBoard.setRowOwners("J2", "J2");
+        bottomBoard.setRowOwners("J1", "J1");
+
+        // Met à jour la balle
+        ballX = GameConfig.BALL_START_X;
+        ballY = GameConfig.BALL_START_Y;
+
+        // Redimensionne la fenêtre
+        setSize(GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
+        gamePanel.revalidate();
+        gamePanel.repaint();
+    }
+
     private void processServerMessage(String message) {
+        if (message.startsWith("CONFIG:")) {
+            // 1. Appliquer la config reçue
+            String[] params = message.substring(7).split(",");
+            for (String param : params) {
+                String[] kv = param.split("=");
+                if (kv.length == 2) {
+                    String key = kv[0];
+                    String value = kv[1];
+                    try {
+                        switch (key) {
+                            case "NORMAL_SPEED": GameConfig.NORMAL_SPEED = Integer.parseInt(value); break;
+                            case "BOOST_SPEED": GameConfig.BOOST_SPEED = Integer.parseInt(value); break;
+                            case "PADDLE_WIDTH": GameConfig.PADDLE_WIDTH = Integer.parseInt(value); break;
+                            case "PADDLE_HEIGHT": GameConfig.PADDLE_HEIGHT = Integer.parseInt(value); break;
+                            case "BALL_RADIUS": GameConfig.BALL_RADIUS = Integer.parseInt(value); break;
+                            case "BALL_INITIAL_SPEED": GameConfig.BALL_INITIAL_SPEED = Double.parseDouble(value); break;
+                            case "BALL_START_X": GameConfig.BALL_START_X = Integer.parseInt(value); break;
+                            case "BALL_START_Y": GameConfig.BALL_START_Y = Integer.parseInt(value); break;
+                            case "WINDOW_WIDTH": GameConfig.WINDOW_WIDTH = Integer.parseInt(value); break;
+                            case "WINDOW_HEIGHT": GameConfig.WINDOW_HEIGHT = Integer.parseInt(value); break;
+                            case "GAME_AREA_MIN_X": GameConfig.GAME_AREA_MIN_X = Integer.parseInt(value); break;
+                            case "GAME_AREA_MAX_X": GameConfig.GAME_AREA_MAX_X = Integer.parseInt(value); break;
+                            case "GAME_AREA_MIN_Y": GameConfig.GAME_AREA_MIN_Y = Integer.parseInt(value); break;
+                            case "GAME_AREA_MAX_Y": GameConfig.GAME_AREA_MAX_Y = Integer.parseInt(value); break;
+                            case "TICK_RATE": GameConfig.TICK_RATE = Integer.parseInt(value); break;
+                            case "TICK_DELAY": GameConfig.TICK_DELAY = Integer.parseInt(value); break;
+                            case "BOARD_X": GameConfig.BOARD_X = Integer.parseInt(value); break;
+                            case "TOP_BOARD_Y": GameConfig.TOP_BOARD_Y = Integer.parseInt(value); break;
+                            case "BOTTOM_BOARD_Y": GameConfig.BOTTOM_BOARD_Y = Integer.parseInt(value); break;
+                            case "CELL_SIZE": GameConfig.CELL_SIZE = Integer.parseInt(value); break;
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+            // 2. Recréer les paddles et boards avec la bonne config
+            recreateComponentsWithConfig();
+            return;
+        }
+
         if (message.startsWith("STATE:")) {
             String[] mainParts = message.split(";PIECES:");
             String[] parts = mainParts[0].substring(6).split(",");
@@ -297,82 +369,80 @@ public Paddle bottomPaddle = new Paddle(
                 ballY = Integer.parseInt(parts[3]);
             }
 
-            // Synchroniser les PV des pièces PAR POSITION ET TYPE
             if (mainParts.length > 1) {
                 String[] piecesData = mainParts[1].split("\\|");
-                // topBoard
-                for (ChessPiece piece : topBoard.getPieces()) {
-                    for (String pdata : piecesData) {
-                        String[] fields = pdata.split(",");
-                        if (fields.length < 5) continue;
-                        String type = fields[0];
-                        int row = Integer.parseInt(fields[1]);
-                        int col = Integer.parseInt(fields[2]);
-                        if (piece.getType().name().equals(type) && piece.getRow() == row && piece.getCol() == col) {
-                            piece.setCurrentHP(Integer.parseInt(fields[3]));
-                            piece.setAlive("1".equals(fields[4]));
-                            break;
-                        }
-                    }
-                }
-                // bottomBoard
-                for (ChessPiece piece : bottomBoard.getPieces()) {
-                    for (String pdata : piecesData) {
-                        String[] fields = pdata.split(",");
-                        if (fields.length < 5) continue;
-                        String type = fields[0];
-                        int row = Integer.parseInt(fields[1]);
-                        int col = Integer.parseInt(fields[2]);
-                        if (piece.getType().name().equals(type) && piece.getRow() == row && piece.getCol() == col) {
-                            piece.setCurrentHP(Integer.parseInt(fields[3]));
-                            piece.setAlive("1".equals(fields[4]));
-                            break;
+                int cols = topBoard.getCols();
+                int perBoard = 2 * cols;
+
+                // Synchronise sur les deux boards pendant toute la reconstruction
+                synchronized (topBoard.getPieces()) {
+                    synchronized (bottomBoard.getPieces()) {
+                        topBoard.getPieces().clear();
+                        bottomBoard.getPieces().clear();
+
+                        for (int i = 0; i < piecesData.length; i++) {
+                            String pdata = piecesData[i];
+                            String[] fields = pdata.split(",");
+                            if (fields.length < 5) continue;
+                            String type = fields[0];
+                            int row = Integer.parseInt(fields[1]);
+                            int col = Integer.parseInt(fields[2]);
+                            int hp = Integer.parseInt(fields[3]);
+                            boolean alive = "1".equals(fields[4]);
+                            PieceType pt = PieceType.valueOf(type);
+                            boolean isWhite = (row == 1);
+
+                            ChessPiece piece = new ChessPiece(pt, null, null, row, col, isWhite);
+                            piece.setCurrentHP(hp);
+                            piece.setAlive(alive);
+
+                            if (i < perBoard) {
+                                topBoard.getPieces().add(piece);
+                            } else {
+                                bottomBoard.getPieces().add(piece);
+                            }
                         }
                     }
                 }
             }
-
             gamePanel.repaint();
         } else if (message.startsWith("COLS:")) {
             int cols = Integer.parseInt(message.substring(5));
             topBoard.setCols(cols);
             bottomBoard.setCols(cols);
             colsField.setText(String.valueOf(cols));
-
-            // topBoard.initializeDefaultPieces(false,null);
-            // bottomBoard.initializeDefaultPieces(true,null);
-
-            // NE PAS recalculer la largeur ou centrer les paddles ici !
             SwingUtilities.invokeLater(() -> resizeWindow(cols));
             gamePanel.repaint();
         }
         else if (message.startsWith("GAMEOVER:WINNER:")) {
-        String winnerSide = message.substring("GAMEOVER:WINNER:".length());
-        String msg;
-        if (mySide != null && mySide.equals(winnerSide)) {
-            msg = "Félicitations ! Vous avez gagné !";
-        } else {
-            msg = "Dommage, vous avez perdu.";
-        }
-        JOptionPane.showMessageDialog(this, "Game Over\n" + msg, "Game Over", JOptionPane.INFORMATION_MESSAGE);
-    }
-    else if (message.startsWith("HP:")) {
-        String[] parts = message.substring(3).split(",");
-        for (String part : parts) {
-            if (part.contains("=")) {
-                String[] kv = part.split("=");
-                try {
-                    PieceType type = PieceType.valueOf(kv[0]);
-                    int hp = Integer.parseInt(kv[1]);
-                    type.setMaxHP(hp);
-                } catch (Exception ignored) {}
+            String winnerSide = message.substring("GAMEOVER:WINNER:".length());
+            String msg;
+            if (mySide != null && mySide.equals(winnerSide)) {
+                msg = "Félicitations ! Vous avez gagné !";
+            } else {
+                msg = "Dommage, vous avez perdu.";
             }
+            JOptionPane.showMessageDialog(this, "Game Over\n" + msg, "Game Over", JOptionPane.INFORMATION_MESSAGE);
         }
-        // Réinitialise les pièces avec les bons HP max
-        topBoard.initializeDefaultPieces(false, null);
-        bottomBoard.initializeDefaultPieces(true, null);
-        gamePanel.repaint();
-    }
+        else if (message.startsWith("HP:")) {
+            String[] parts = message.substring(3).split(",");
+            for (String part : parts) {
+                if (part.contains("=")) {
+                    String[] kv = part.split("=");
+                    try {
+                        PieceType type = PieceType.valueOf(kv[0]);
+                        int hp = Integer.parseInt(kv[1]);
+                        type.setMaxHP(hp);
+                    } catch (Exception ignored) {}
+                }
+            }
+            // Réinitialise les pièces avec les bons HP max
+            // topBoard.initializeDefaultPieces(false, null);
+            // bottomBoard.initializeDefaultPieces(true, null);
+            gamePanel.repaint();
+        }
+
+        
     }
 
     class GamePanel extends JPanel {
@@ -388,6 +458,10 @@ public Paddle bottomPaddle = new Paddle(
 
             // System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
             //     + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
+
+            System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
+System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
+System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
             // Fond beige clair
             g.setColor(new Color(245, 245, 220));
             g.fillRect(0, 0, getWidth(), getHeight());

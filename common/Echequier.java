@@ -190,22 +190,24 @@ public class Echequier {
             }
         }
         // Dessiner les pièces
-        for (ChessPiece piece : pieces) {
-            if (piece.isAlive()) {
-                int px = x + piece.getCol() * cellWidth;
-                int py = y + piece.getRow() * cellHeight;
-                if (piece.getImage() != null) {
-                    g.drawImage(piece.getImage(), px + 5, py + 5, cellWidth - 10, cellHeight - 10, null);
-                } else {
-                    g.setColor(piece.isWhite() ? Color.WHITE : Color.BLACK);
-                    g.fillOval(px + 10, py + 10, cellWidth - 20, cellHeight - 20);
+        synchronized (pieces) {
+            for (ChessPiece piece : pieces) {
+                if (piece.isAlive()) {
+                    int px = x + piece.getCol() * cellWidth;
+                    int py = y + piece.getRow() * cellHeight;
+                    if (piece.getImage() != null) {
+                        g.drawImage(piece.getImage(), px + 5, py + 5, cellWidth - 10, cellHeight - 10, null);
+                    } else {
+                        g.setColor(piece.isWhite() ? Color.WHITE : Color.BLACK);
+                        g.fillOval(px + 10, py + 10, cellWidth - 20, cellHeight - 20);
+                    }
+                    // PV sous la pièce
+                    g.setColor(Color.WHITE);
+                    g.setFont(new Font("Arial", Font.BOLD, 12));
+                    String hpText = String.valueOf(piece.getCurrentHP());
+                    int textWidth = g.getFontMetrics().stringWidth(hpText);
+                    g.drawString(hpText, px + (cellWidth - textWidth) / 2, py + cellHeight - 5);
                 }
-                // ✨ Afficher les PV sous la pièce
-                g.setColor(Color.WHITE);
-                g.setFont(new Font("Arial", Font.BOLD, 12));
-                String hpText = String.valueOf(piece.getCurrentHP());
-                int textWidth = g.getFontMetrics().stringWidth(hpText);
-                g.drawString(hpText, px + (cellWidth - textWidth) / 2, py + cellHeight - 5);
             }
         }
     }
