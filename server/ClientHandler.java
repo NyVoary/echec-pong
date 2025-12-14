@@ -1,7 +1,8 @@
 package server;
 import java.io.*;
 import java.net.*;
-import common.PieceType; // Ajoute cet import
+import common.PieceType;
+import common.GameConfig;
 
 public class ClientHandler extends Thread {
     private Socket socket;
@@ -34,6 +35,28 @@ public class ClientHandler extends Thread {
             
             out.println("SIDE:" + playerSide);
             System.out.println("→ Client assigné côté: " + playerSide);
+
+            // Envoie la configuration générale au client
+            StringBuilder configMsg = new StringBuilder("CONFIG:");
+            configMsg.append("WINDOW_WIDTH=").append(GameConfig.WINDOW_WIDTH).append(",");
+            configMsg.append("WINDOW_HEIGHT=").append(GameConfig.WINDOW_HEIGHT).append(",");
+            configMsg.append("PADDLE_WIDTH=").append(GameConfig.PADDLE_WIDTH).append(",");
+            configMsg.append("PADDLE_HEIGHT=").append(GameConfig.PADDLE_HEIGHT).append(",");
+            configMsg.append("BALL_RADIUS=").append(GameConfig.BALL_RADIUS).append(",");
+            configMsg.append("BALL_INITIAL_SPEED=").append(GameConfig.BALL_INITIAL_SPEED).append(",");
+            configMsg.append("BALL_START_X=").append(GameConfig.BALL_START_X).append(",");
+            configMsg.append("BALL_START_Y=").append(GameConfig.BALL_START_Y).append(",");
+            configMsg.append("GAME_AREA_MIN_X=").append(GameConfig.GAME_AREA_MIN_X).append(",");
+            configMsg.append("GAME_AREA_MAX_X=").append(GameConfig.GAME_AREA_MAX_X).append(",");
+            configMsg.append("GAME_AREA_MIN_Y=").append(GameConfig.GAME_AREA_MIN_Y).append(",");
+            configMsg.append("GAME_AREA_MAX_Y=").append(GameConfig.GAME_AREA_MAX_Y).append(",");
+            configMsg.append("TICK_RATE=").append(GameConfig.TICK_RATE).append(",");
+            configMsg.append("TICK_DELAY=").append(GameConfig.TICK_DELAY).append(",");
+            configMsg.append("BOARD_X=").append(GameConfig.BOARD_X).append(",");
+            configMsg.append("TOP_BOARD_Y=").append(GameConfig.TOP_BOARD_Y).append(",");
+            configMsg.append("BOTTOM_BOARD_Y=").append(GameConfig.BOTTOM_BOARD_Y).append(",");
+            configMsg.append("CELL_SIZE=").append(GameConfig.CELL_SIZE);
+            out.println(configMsg.toString());
 
             // Envoie les HP max de chaque type au client
             StringBuilder hpMsg = new StringBuilder("HP:");

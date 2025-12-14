@@ -90,6 +90,7 @@ public class Ball {
             speedX = Math.abs(speedX);
             x = rectX + rectWidth + radius;
         }
+        System.out.println("Test collision: Ball(" + x + "," + y + ") vs Rect(" + rectX + "," + rectY + "," + rectWidth + "," + rectHeight + ")");
     }
 }
     
