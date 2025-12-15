@@ -1,15 +1,21 @@
 package server;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import configservice.ConfigServiceRemote;
-import common.Paddle;
+
 import common.Ball;
-import common.GameConfig;
-import common.Echequier;
 import common.ChessPiece;
+import common.Echequier;
+import common.GameConfig;
+import common.Paddle;
 import common.PieceType;
+import configservice.ConfigServiceRemote;
 
 public class GameEngine {
     public Paddle topPaddle;
@@ -125,8 +131,56 @@ public class GameEngine {
 
             System.out.println("Configuration chargée depuis EJB !");
         } catch (Exception e) {
-            System.out.println("Erreur chargement config EJB : " + e.getMessage());
-            // Optionnel : fallback sur les fichiers si besoin
+            System.out.println("⚠ Erreur chargement config EJB : " + e.getMessage());
+            System.out.println("→ Fallback sur config.txt...");
+            loadConfigFromFile();
+        }
+    }
+
+    private void loadConfigFromFile() {
+        try {
+            Properties props = new Properties();
+            props.load(new java.io.FileInputStream("config/config.txt"));
+            
+            GameConfig.NORMAL_SPEED = Integer.parseInt(props.getProperty("NORMAL_SPEED", "5"));
+            GameConfig.BOOST_SPEED = Integer.parseInt(props.getProperty("BOOST_SPEED", "10"));
+            GameConfig.PADDLE_WIDTH = Integer.parseInt(props.getProperty("PADDLE_WIDTH", "200"));
+            GameConfig.PADDLE_HEIGHT = Integer.parseInt(props.getProperty("PADDLE_HEIGHT", "15"));
+            GameConfig.BALL_RADIUS = Integer.parseInt(props.getProperty("BALL_RADIUS", "8"));
+            GameConfig.BALL_INITIAL_SPEED = Double.parseDouble(props.getProperty("BALL_INITIAL_SPEED", "3.0"));
+            GameConfig.BALL_START_X = Integer.parseInt(props.getProperty("BALL_START_X", "240"));
+            GameConfig.BALL_START_Y = Integer.parseInt(props.getProperty("BALL_START_Y", "300"));
+            GameConfig.WINDOW_WIDTH = Integer.parseInt(props.getProperty("WINDOW_WIDTH", "480"));
+            GameConfig.WINDOW_HEIGHT = Integer.parseInt(props.getProperty("WINDOW_HEIGHT", "600"));
+            GameConfig.GAME_AREA_MIN_X = Integer.parseInt(props.getProperty("GAME_AREA_MIN_X", "0"));
+            GameConfig.GAME_AREA_MAX_X = Integer.parseInt(props.getProperty("GAME_AREA_MAX_X", "480"));
+            GameConfig.GAME_AREA_MIN_Y = Integer.parseInt(props.getProperty("GAME_AREA_MIN_Y", "140"));
+            GameConfig.GAME_AREA_MAX_Y = Integer.parseInt(props.getProperty("GAME_AREA_MAX_Y", "600"));
+            GameConfig.DEFAULT_HOST = props.getProperty("DEFAULT_HOST", "localhost");
+            GameConfig.DEFAULT_PORT = Integer.parseInt(props.getProperty("DEFAULT_PORT", "5555"));
+            GameConfig.TICK_RATE = Integer.parseInt(props.getProperty("TICK_RATE", "60"));
+            GameConfig.TICK_DELAY = Integer.parseInt(props.getProperty("TICK_DELAY", "16"));
+            GameConfig.BOARD_X = Integer.parseInt(props.getProperty("BOARD_X", "0"));
+            GameConfig.TOP_BOARD_Y = Integer.parseInt(props.getProperty("TOP_BOARD_Y", "140"));
+            GameConfig.BOTTOM_BOARD_Y = Integer.parseInt(props.getProperty("BOTTOM_BOARD_Y", "460"));
+            GameConfig.CELL_SIZE = Integer.parseInt(props.getProperty("CELL_SIZE", "60"));
+            
+            // Charge aussi les HP depuis vie.txt
+            try {
+                Properties hpProps = new Properties();
+                hpProps.load(new java.io.FileInputStream("config/vie.txt"));
+                for (PieceType type : PieceType.values()) {
+                    String hpStr = hpProps.getProperty(type.name());
+                    if (hpStr != null) {
+                        type.setMaxHP(Integer.parseInt(hpStr));
+                    }
+                }
+            } catch (Exception ignored) {}
+            
+            System.out.println("✓ Configuration chargée depuis fichiers config/");
+        } catch (Exception ex) {
+            System.out.println("✗ Impossible de charger config.txt : " + ex.getMessage());
+            System.out.println("→ Utilisation des valeurs par défaut de GameConfig");
         }
     }
 

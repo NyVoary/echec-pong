@@ -1,16 +1,48 @@
 package client;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
-import java.net.*;
-import javax.swing.*;
-import common.Paddle;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RadialGradientPaint;
+import java.awt.RenderingHints;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.BufferedReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
+import common.ChessPiece;
 import common.Echequier;
 import common.GameConfig;
-import common.ChessPiece;
+import common.Paddle;
 import common.PieceType;
-import java.util.Properties;
-import java.util.*;
 
 public class GameFrame extends JFrame {
     private PrintWriter out;
@@ -46,7 +78,7 @@ public class GameFrame extends JFrame {
     private int ballY;
 
     public GameFrame() {
-        setTitle("Échec Pong - Client");
+        setTitle("♟ Chess Pong Arena ♟");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Taille par défaut (avant d'avoir la vraie config)
@@ -82,18 +114,24 @@ public class GameFrame extends JFrame {
         ipField = new JTextField("localhost", 15);
         portField = new JTextField("5555", 5);
         colsField = new JTextField("8", 5);
-        connectButton = new JButton("Se connecter");
-        updateColsButton = new JButton("Mettre a jour");
-        vieConfigButton = new JButton("Configurer les vies");
-        vieConfigButton.setBounds(400, 25, 180, 25);
+        connectButton = new JButton("▶ Connexion");
+        updateColsButton = new JButton("⚙ Appliquer");
+        vieConfigButton = new JButton("❤ Gérer PV");
+        
+        // Style des boutons
+        styleButton(connectButton, new Color(76, 175, 80));
+        styleButton(updateColsButton, new Color(33, 150, 243));
+        styleButton(vieConfigButton, new Color(156, 39, 176));
+        
+        vieConfigButton.setBounds(400, 25, 160, 30);
         gamePanel.add(vieConfigButton);
 
-        ipField.setBounds(10, 25, 150, 25);
-        portField.setBounds(10, 55, 150, 25);
-        connectButton.setBounds(10, 85, 150, 25);
+        ipField.setBounds(10, 25, 150, 28);
+        portField.setBounds(10, 58, 150, 28);
+        connectButton.setBounds(10, 91, 150, 32);
 
-        colsField.setBounds(200, 25, 100, 25);
-        updateColsButton.setBounds(200, 55, 150, 25);
+        colsField.setBounds(200, 25, 100, 28);
+        updateColsButton.setBounds(200, 58, 150, 32);
 
         gamePanel.setLayout(null);
         gamePanel.add(ipField);
@@ -117,6 +155,30 @@ public class GameFrame extends JFrame {
     private void openVieConfigDialog() {
         VieConfigDialog dialog = new VieConfigDialog(this);
         dialog.setVisible(true);
+    }
+
+    // Méthode pour styliser les boutons
+    private void styleButton(JButton button, Color color) {
+        button.setBackground(color);
+        button.setForeground(Color.WHITE);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(color.darker(), 1),
+            BorderFactory.createEmptyBorder(5, 15, 5, 15)
+        ));
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setOpaque(true);
+        
+        // Effet hover
+        button.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(color.brighter());
+            }
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(color);
+            }
+        });
     }
 
     // ✨ Centre les raquettes et la balle dans le panel de jeu
@@ -214,10 +276,13 @@ public class GameFrame extends JFrame {
             connectButton.setEnabled(false);
             ipField.setEnabled(false);
             portField.setEnabled(false);
-            connectButton.setText("Connecté ✓");
+            connectButton.setText("✓ En ligne");
+            connectButton.setBackground(new Color(67, 160, 71));
 
             JOptionPane.showMessageDialog(this,
-                "Connecté au serveur !\nVous êtes: " + (mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"));
+                "🎮 Bienvenue dans l'arène !\n\n" + 
+                "Votre position: " + (mySide.equals("LEFT") ? "⬆ HAUT (Joueur 2)" : "⬇ BAS (Joueur 1)"),
+                "Connexion établie", JOptionPane.INFORMATION_MESSAGE);
 
             out.println("COLS:" + topBoard.getCols());
             requestFocus();
@@ -276,7 +341,8 @@ private void setupKeyListeners() {
                         connectButton.setEnabled(true);
                         ipField.setEnabled(true);
                         portField.setEnabled(true);
-                        connectButton.setText("Se connecter");
+                        connectButton.setText("▶ Connexion");
+                        styleButton(connectButton, new Color(76, 175, 80));
                     });
                 }
             }
@@ -455,67 +521,112 @@ private void setupKeyListeners() {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-
-            // System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
-            //     + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
 System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
 System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
-            // Fond beige clair
-            g.setColor(new Color(245, 245, 220));
-            g.fillRect(0, 0, getWidth(), getHeight());
+            // Fond avec dégradé moderne
+            GradientPaint gradient = new GradientPaint(0, 0, new Color(25, 25, 40), 
+                                                       0, getHeight(), new Color(50, 50, 70));
+            g2d.setPaint(gradient);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
 
-            // Zone d'information en haut
-            g.setColor(Color.WHITE);
-            g.fillRect(0, 0, getWidth(), 140);
+            // Zone d'information en haut avec dégradé
+            GradientPaint headerGradient = new GradientPaint(0, 0, new Color(63, 81, 181), 
+                                                             0, 140, new Color(48, 63, 159));
+            g2d.setPaint(headerGradient);
+            g2d.fillRect(0, 0, getWidth(), 140);
+            
+            // Bordure de la zone header
+            g2d.setColor(new Color(255, 255, 255, 50));
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawRect(0, 0, getWidth() - 1, 139);
 
-            g.setColor(Color.BLACK);
-            g.setFont(new Font("Arial", Font.PLAIN, 11));
-            g.drawString("Adresse IP:", 10, 15);
-            g.drawString("Port:", 10, 40);
+            g2d.setColor(new Color(255, 255, 255, 200));
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            g2d.drawString("🌐 Serveur:", 10, 15);
+            g2d.drawString("📡 Port:", 10, 43);
 
             if (connected) {
-                g.setColor(new Color(0, 150, 0));
-                g.drawString("Connecte - Vous etes: " +
-                    (mySide != null && mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"),
-                    200, 50);
-                g.setColor(Color.BLACK);
-                g.drawString("Utilisez LEFT/RIGHT pour bouger", 200, 70);
+                g2d.setColor(new Color(76, 255, 76));
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                g2d.drawString("● CONNECTÉ - Position: " +
+                    (mySide != null && mySide.equals("LEFT") ? "⬆ HAUT" : "⬇ BAS"),
+                    200, 45);
+                g2d.setColor(new Color(255, 255, 255, 180));
+                g2d.setFont(new Font("Segoe UI", Font.ITALIC, 10));
+                g2d.drawString("Commandes: ← → (ou S D)", 200, 65);
             } else {
-                g.setColor(Color.RED);
-                g.drawString("Non connecte", 200, 50);
+                g2d.setColor(new Color(255, 82, 82));
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                g2d.drawString("● HORS LIGNE", 200, 45);
             }
 
-            g.setColor(Color.GRAY);
-            g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
+            g2d.setColor(new Color(255, 255, 255, 150));
+            g2d.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+            g2d.drawString("⚙ Grille (pair, 2-8)", 10, 105);
 
             // Dessiner les échiquiers
             topBoard.draw(g);
             bottomBoard.draw(g);
 
-            // Dessiner les raquettes horizontales
+            // Dessiner les raquettes horizontales avec style
             int paddleTopY = topBoardY + (2 * cellSize) + 25;
             int paddleBottomY = bottomBoardY - 30;
 
-            g.setColor(Color.BLUE);
-            g.fillRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight());
+            // Raquette du haut avec dégradé cyan
+            GradientPaint topPaddleGrad = new GradientPaint(topPaddle.getX(), paddleTopY, 
+                                                            new Color(0, 188, 212),
+                                                            topPaddle.getX() + topPaddle.getWidth(), paddleTopY,
+                                                            new Color(0, 150, 136));
+            g2d.setPaint(topPaddleGrad);
+            g2d.fillRoundRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight(), 8, 8);
+            g2d.setColor(new Color(255, 255, 255, 100));
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawRoundRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight(), 8, 8);
 
-            g.setColor(Color.RED);
-            g.fillRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight());
+            // Raquette du bas avec dégradé magenta
+            GradientPaint bottomPaddleGrad = new GradientPaint(bottomPaddle.getX(), paddleBottomY,
+                                                               new Color(233, 30, 99),
+                                                               bottomPaddle.getX() + bottomPaddle.getWidth(), paddleBottomY,
+                                                               new Color(156, 39, 176));
+            g2d.setPaint(bottomPaddleGrad);
+            g2d.fillRoundRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight(), 8, 8);
+            g2d.setColor(new Color(255, 255, 255, 100));
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawRoundRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight(), 8, 8);
 
-            // Dessiner la balle
-            g.setColor(Color.WHITE);
-            g.fillOval(ballX - GameConfig.BALL_RADIUS,
+            // Dessiner la balle avec effet lumineux
+            int ballSize = GameConfig.BALL_RADIUS * 2;
+            // Halo lumineux
+            RadialGradientPaint halo = new RadialGradientPaint(
+                ballX, ballY, GameConfig.BALL_RADIUS * 1.8f,
+                new float[]{0.0f, 0.7f, 1.0f},
+                new Color[]{new Color(255, 235, 59, 100), new Color(255, 193, 7, 50), new Color(255, 193, 7, 0)}
+            );
+            g2d.setPaint(halo);
+            g2d.fillOval(ballX - (int)(GameConfig.BALL_RADIUS * 1.8), 
+                        ballY - (int)(GameConfig.BALL_RADIUS * 1.8),
+                        (int)(ballSize * 1.8), (int)(ballSize * 1.8));
+            
+            // Balle principale avec dégradé
+            RadialGradientPaint ballGrad = new RadialGradientPaint(
+                ballX - GameConfig.BALL_RADIUS/3, ballY - GameConfig.BALL_RADIUS/3, GameConfig.BALL_RADIUS * 1.2f,
+                new float[]{0.0f, 0.6f, 1.0f},
+                new Color[]{new Color(255, 255, 255), new Color(255, 235, 59), new Color(255, 193, 7)}
+            );
+            g2d.setPaint(ballGrad);
+            g2d.fillOval(ballX - GameConfig.BALL_RADIUS,
                        ballY - GameConfig.BALL_RADIUS,
-                       GameConfig.BALL_RADIUS * 2,
-                       GameConfig.BALL_RADIUS * 2);
+                       ballSize, ballSize);
 
-            g.setColor(Color.BLACK);
-            g.drawOval(ballX - GameConfig.BALL_RADIUS,
+            g2d.setColor(new Color(255, 255, 255, 150));
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawOval(ballX - GameConfig.BALL_RADIUS,
                        ballY - GameConfig.BALL_RADIUS,
-                       GameConfig.BALL_RADIUS * 2,
-                       GameConfig.BALL_RADIUS * 2);
+                       ballSize, ballSize);
         }
     }
 
@@ -524,10 +635,11 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
         private Map<PieceType, JTextField> fields = new HashMap<>();
 
         public VieConfigDialog(Frame parent) {
-            super(parent, "Configurer les vies des pièces", true);
+            super(parent, "⚔ Configuration des Points de Vie ⚔", true);
             setLayout(new GridLayout(PieceType.values().length + 1, 2, 10, 5));
-            setSize(350, 250);
+            setSize(380, 280);
             setLocationRelativeTo(parent);
+            getContentPane().setBackground(new Color(250, 250, 250));
 
             for (PieceType type : PieceType.values()) {
                 add(new JLabel(type.getDisplayName()));
@@ -536,11 +648,13 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
                 add(tf);
             }
 
-            JButton saveBtn = new JButton("Enregistrer");
+            JButton saveBtn = new JButton("💾 Sauvegarder");
+            styleButton(saveBtn, new Color(76, 175, 80));
             saveBtn.addActionListener(e -> saveVieConfig());
             add(saveBtn);
 
-            JButton cancelBtn = new JButton("Annuler");
+            JButton cancelBtn = new JButton("✖ Annuler");
+            styleButton(cancelBtn, new Color(244, 67, 54));
             cancelBtn.addActionListener(e -> dispose());
             add(cancelBtn);
         }
@@ -563,7 +677,8 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
                     fw.write(type.name() + "=" + type.getMaxHP() + "\n");
                 }
                 fw.flush();
-                JOptionPane.showMessageDialog(this, "Vies enregistrées !");
+                JOptionPane.showMessageDialog(this, "✓ Configuration sauvegardée avec succès !", 
+                    "Succès", JOptionPane.INFORMATION_MESSAGE);
                 // ✨ Correction : utiliser la référence du parent
                 if (GameFrame.this.out != null) {
                     GameFrame.this.out.println("RELOAD_HP");
