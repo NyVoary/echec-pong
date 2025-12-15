@@ -29,6 +29,9 @@ public class GameEngine {
     public Player bottomPlayer;   // Ajouté
     private int boardCols = 8;
     
+    // Référence à l'EJB pour les mises à jour
+    private ConfigServiceRemote configService;
+    
     private boolean gameRunning = false;
     private Thread gameLoopThread;
 
@@ -84,7 +87,7 @@ public class GameEngine {
             props.put(Context.PROVIDER_URL, "http-remoting://localhost:8080");
             Context ctx = new InitialContext(props);
 
-            ConfigServiceRemote configService = (ConfigServiceRemote) ctx.lookup(
+            configService = (ConfigServiceRemote) ctx.lookup(
                 "ejb:/configservice//ConfigServiceBean!configservice.ConfigServiceRemote"
             );
 
@@ -181,6 +184,33 @@ public class GameEngine {
         } catch (Exception ex) {
             System.out.println("✗ Impossible de charger config.txt : " + ex.getMessage());
             System.out.println("→ Utilisation des valeurs par défaut de GameConfig");
+        }
+    }
+
+    // === MÉTHODES DE SAUVEGARDE DANS LA BDD ===
+    public void saveHPToDatabase(Map<String, Integer> hpMap) {
+        if (configService != null) {
+            try {
+                configService.updateAllPieceHP(hpMap);
+                System.out.println("💾 HP sauvegardés dans la BDD via EJB");
+            } catch (Exception e) {
+                System.out.println("⚠ Erreur sauvegarde HP dans BDD : " + e.getMessage());
+            }
+        } else {
+            System.out.println("⚠ EJB non disponible, impossible de sauvegarder les HP");
+        }
+    }
+
+    public void saveConfigValueToDatabase(String key, String value) {
+        if (configService != null) {
+            try {
+                configService.updateGameConfigValue(key, value);
+                System.out.println("💾 Config sauvegardée: " + key + " = " + value);
+            } catch (Exception e) {
+                System.out.println("⚠ Erreur sauvegarde config dans BDD : " + e.getMessage());
+            }
+        } else {
+            System.out.println("⚠ EJB non disponible, impossible de sauvegarder la config");
         }
     }
 

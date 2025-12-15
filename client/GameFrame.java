@@ -661,28 +661,42 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
 
         private void saveVieConfig() {
             Properties props = new Properties();
+            StringBuilder hpData = new StringBuilder();
+            
             for (PieceType type : PieceType.values()) {
                 try {
                     int hp = Integer.parseInt(fields.get(type).getText().trim());
                     type.setMaxHP(hp);
                     props.setProperty(type.name(), String.valueOf(hp));
+                    
+                    // Prépare les données pour l'envoi au serveur
+                    if (hpData.length() > 0) hpData.append(",");
+                    hpData.append(type.name()).append("=").append(hp);
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Valeur invalide pour " + type.getDisplayName());
                     return;
                 }
             }
-            // Sauvegarde dans le fichier vie.txt
+            
+            // Sauvegarde dans le fichier vie.txt (local)
             try (FileWriter fw = new FileWriter("config/vie.txt")) {
                 for (PieceType type : PieceType.values()) {
                     fw.write(type.name() + "=" + type.getMaxHP() + "\n");
                 }
                 fw.flush();
-                JOptionPane.showMessageDialog(this, "✓ Configuration sauvegardée avec succès !", 
-                    "Succès", JOptionPane.INFORMATION_MESSAGE);
-                // ✨ Correction : utiliser la référence du parent
+                
+                // Envoie au serveur pour sauvegarde dans la BDD
                 if (GameFrame.this.out != null) {
+                    GameFrame.this.out.println("SAVE_HP:" + hpData.toString());
                     GameFrame.this.out.println("RELOAD_HP");
                 }
+                
+                JOptionPane.showMessageDialog(this, 
+                    "✓ Configuration sauvegardée !\n\n" +
+                    "📝 Fichier local: config/vie.txt\n" +
+                    "💾 Base de données: mise à jour via EJB", 
+                    "Succès", JOptionPane.INFORMATION_MESSAGE);
+                    
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
             }

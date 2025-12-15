@@ -28,4 +28,30 @@ public class ConfigServiceBean implements ConfigServiceRemote {
         }
         return hpMap;
     }
+
+    @Override
+    public void updateGameConfigValue(String key, String value) {
+        em.createNativeQuery("UPDATE game_config SET value = ?1 WHERE key = ?2")
+            .setParameter(1, value)
+            .setParameter(2, key)
+            .executeUpdate();
+        System.out.println("[EJB] Mise à jour: " + key + " = " + value);
+    }
+
+    @Override
+    public void updatePieceHP(String pieceType, int hp) {
+        em.createNativeQuery("UPDATE piece_hp SET hp = ?1 WHERE piece_type = ?2")
+            .setParameter(1, hp)
+            .setParameter(2, pieceType)
+            .executeUpdate();
+        System.out.println("[EJB] Mise à jour HP: " + pieceType + " = " + hp);
+    }
+
+    @Override
+    public void updateAllPieceHP(Map<String, Integer> hpMap) {
+        for (Map.Entry<String, Integer> entry : hpMap.entrySet()) {
+            updatePieceHP(entry.getKey(), entry.getValue());
+        }
+        System.out.println("[EJB] Tous les HP mis à jour");
+    }
 }

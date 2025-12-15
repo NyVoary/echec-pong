@@ -1,8 +1,14 @@
 package server;
-import java.io.*;
-import java.net.*;
-import common.PieceType;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
+
 import common.GameConfig;
+import common.PieceType;
 
 public class ClientHandler extends Thread {
     private Socket socket;
@@ -94,6 +100,19 @@ public class ClientHandler extends Thread {
         }
         else if (command.equals("RELOAD_HP")) {
             gameEngine.loadConfigFromEJB();
+        }
+        else if (command.startsWith("SAVE_HP:")) {
+            // Format: SAVE_HP:PAWN=5,ROOK=10,KNIGHT=8,...
+            String hpData = command.substring(8);
+            Map<String, Integer> hpMap = new HashMap<>();
+            for (String pair : hpData.split(",")) {
+                String[] kv = pair.split("=");
+                if (kv.length == 2) {
+                    hpMap.put(kv[0], Integer.parseInt(kv[1]));
+                }
+            }
+            gameEngine.saveHPToDatabase(hpMap);
+            System.out.println("💾 Requête de sauvegarde HP reçue du client");
         }
     }
 
