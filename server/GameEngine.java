@@ -1,15 +1,21 @@
 package server;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import configservice.ConfigServiceRemote;
-import common.Paddle;
+
 import common.Ball;
-import common.GameConfig;
-import common.Echequier;
 import common.ChessPiece;
+import common.Echequier;
+import common.GameConfig;
+import common.Paddle;
 import common.PieceType;
+import configservice.ConfigServiceRemote;
 
 public class GameEngine {
     public Paddle topPaddle;
@@ -71,6 +77,7 @@ public class GameEngine {
         bottomBoard.initializeDefaultPieces(true, bottomPlayer);
     }
 
+    // maka config deouis postgres
     public void loadConfigFromEJB() { //alea 1
         try {
             Properties props = new Properties();
