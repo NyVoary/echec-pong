@@ -1,7 +1,8 @@
 package configservice;
 
 import java.util.Map;
-import jakarta.ejb.Remote;
+
+import javax.ejb.Remote;
 
 @Remote
 public interface ConfigServiceRemote {

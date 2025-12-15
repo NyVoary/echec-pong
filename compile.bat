@@ -3,8 +3,11 @@ REM Nettoyage du dossier de sortie
 if exist out rmdir /s /q out
 mkdir out
 
-REM Compilation des sources Java SE (client/serveur)
-javac -d out common/*.java server/*.java client/*.java
+REM Chemin vers WildFly
+set WILDFLY_HOME=D:\wildfly-37.0.1.Final
+
+REM Compilation des sources Java SE (client/serveur) avec les libs WildFly
+javac -cp "%WILDFLY_HOME%\bin\client\jboss-client.jar" -d out common/*.java server/*.java client/*.java
 
 REM Copie les images dans le dossier de sortie
 xcopy pieces out\pieces /E /I /Y

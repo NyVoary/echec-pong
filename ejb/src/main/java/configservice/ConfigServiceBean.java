@@ -1,9 +1,13 @@
 package configservice;
 
-import jakarta.ejb.Stateless;
-import jakarta.ejb.Remote;
-import jakarta.persistence.*;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.ejb.Remote;
+import javax.ejb.Stateless;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 
 @Stateless
 @Remote(ConfigServiceRemote.class)
