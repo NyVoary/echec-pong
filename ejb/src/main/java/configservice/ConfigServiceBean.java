@@ -28,4 +28,12 @@ public class ConfigServiceBean implements ConfigServiceRemote {
         }
         return hpMap;
     }
+
+    @Override
+    public void setPieceHP(String pieceType, int hp) {
+        em.createNativeQuery("UPDATE piece_hp SET hp = ? WHERE piece_type = ?")
+          .setParameter(1, hp)
+          .setParameter(2, pieceType)
+          .executeUpdate();
+    }
 }

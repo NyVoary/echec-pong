@@ -7,4 +7,6 @@ import jakarta.ejb.Remote;
 public interface ConfigServiceRemote {
     Map<String, String> getGameConfig();
     Map<String, Integer> getPieceHP();
+    void setPieceHP(String pieceType, int hp); // AJOUTE CETTE LIGNE
+
 }
