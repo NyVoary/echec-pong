@@ -44,6 +44,7 @@ public class GameFrame extends JFrame {
 
     private int ballX;
     private int ballY;
+    
 
     public GameFrame() {
         setTitle("Échec Pong - Client");
@@ -459,9 +460,9 @@ private void setupKeyListeners() {
             // System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
             //     + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
 
-            System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
-System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
-System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
+//             System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
+// System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
+// System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
             // Fond beige clair
             g.setColor(new Color(245, 245, 220));
             g.fillRect(0, 0, getWidth(), getHeight());
@@ -562,15 +563,15 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
                 }
             }
             // Optionnel : sauvegarde locale (si tu veux garder un backup)
-            try (FileWriter fw = new FileWriter("config/vie.txt")) {
-                for (PieceType type : PieceType.values()) {
-                    fw.write(type.name() + "=" + type.getMaxHP() + "\n");
-                }
-                fw.flush();
-                JOptionPane.showMessageDialog(this, "Vies enregistrées !");
-            } catch (IOException ex) {
-                JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
-            }
+            // try (FileWriter fw = new FileWriter("config/vie.txt")) {
+            //     for (PieceType type : PieceType.values()) {
+            //         fw.write(type.name() + "=" + type.getMaxHP() + "\n");
+            //     }
+            //     fw.flush();
+            //     JOptionPane.showMessageDialog(this, "Vies enregistrées !");
+            // } catch (IOException ex) {
+            //     JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
+            // }
             dispose();
             GameFrame.this.requestFocus();
         }
