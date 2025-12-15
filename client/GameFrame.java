@@ -46,7 +46,7 @@ public class GameFrame extends JFrame {
     private int ballY;
 
     public GameFrame() {
-        setTitle("Échec Pong - Client");
+        setTitle("♟️ ChessBall Arena - Joueur");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Taille par défaut (avant d'avoir la vraie config)
@@ -82,18 +82,18 @@ public class GameFrame extends JFrame {
         ipField = new JTextField("localhost", 15);
         portField = new JTextField("5555", 5);
         colsField = new JTextField("8", 5);
-        connectButton = new JButton("Se connecter");
-        updateColsButton = new JButton("Mettre a jour");
-        vieConfigButton = new JButton("Configurer les vies");
-        vieConfigButton.setBounds(400, 25, 180, 25);
-        gamePanel.add(vieConfigButton);
+        connectButton = new JButton("⚡ Connexion");
+        updateColsButton = new JButton("♻️ Colonnes");
+        vieConfigButton = new JButton("❤️ Config Vies");
+        
+        // Nouvelle disposition - plus compact et moderne
+        ipField.setBounds(10, 10, 120, 25);
+        portField.setBounds(140, 10, 60, 25);
+        connectButton.setBounds(210, 10, 120, 25);
 
-        ipField.setBounds(10, 25, 150, 25);
-        portField.setBounds(10, 55, 150, 25);
-        connectButton.setBounds(10, 85, 150, 25);
-
-        colsField.setBounds(200, 25, 100, 25);
-        updateColsButton.setBounds(200, 55, 150, 25);
+        colsField.setBounds(10, 45, 60, 25);
+        updateColsButton.setBounds(80, 45, 120, 25);
+        vieConfigButton.setBounds(210, 45, 140, 25);
 
         gamePanel.setLayout(null);
         gamePanel.add(ipField);
@@ -103,15 +103,30 @@ public class GameFrame extends JFrame {
         gamePanel.add(updateColsButton);
         gamePanel.add(vieConfigButton);
 
-        connectButton.addActionListener(e -> connectToServer());
-        updateColsButton.addActionListener(e -> updateColumns());
-        vieConfigButton.addActionListener(e -> openVieConfigDialog());
+        connectButton.addActionListener(e -> {
+            connectToServer();
+            requestFocusInWindow();
+        });
+        updateColsButton.addActionListener(e -> {
+            updateColumns();
+            requestFocusInWindow();
+        });
+        vieConfigButton.addActionListener(e -> {
+            openVieConfigDialog();
+            requestFocusInWindow();
+        });
 
-        ActionListener connectAction = e -> connectToServer();
+        ActionListener connectAction = e -> {
+            connectToServer();
+            requestFocusInWindow();
+        };
         ipField.addActionListener(connectAction);
         portField.addActionListener(connectAction);
 
-        colsField.addActionListener(e -> updateColumns());
+        colsField.addActionListener(e -> {
+            updateColumns();
+            requestFocusInWindow();
+        });
     }
 
     private void openVieConfigDialog() {
@@ -214,10 +229,12 @@ public class GameFrame extends JFrame {
             connectButton.setEnabled(false);
             ipField.setEnabled(false);
             portField.setEnabled(false);
-            connectButton.setText("Connecté ✓");
+            connectButton.setText("✅ Connect\u00e9");
 
             JOptionPane.showMessageDialog(this,
-                "Connecté au serveur !\nVous êtes: " + (mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"));
+                "✅ Connexion r\u00e9ussie !\n\nVous \u00eates: " + (mySide.equals("LEFT") ? "↑ JOUEUR HAUT" : "↓ JOUEUR BAS") +
+                "\n\nPr\u00eat \u00e0 jouer !",
+                "ChessBall Arena", JOptionPane.INFORMATION_MESSAGE);
 
             out.println("COLS:" + topBoard.getCols());
             requestFocus();
@@ -235,29 +252,38 @@ public class GameFrame extends JFrame {
     }
 
 private void setupKeyListeners() {
-    addKeyListener(new KeyAdapter() {
+    // Utilise KeyEventDispatcher pour capturer les touches même sans focus explicite
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
         @Override
-        public void keyPressed(KeyEvent e) {
-            if (!connected || mySide == null) return;
+        public boolean dispatchKeyEvent(KeyEvent e) {
+            if (e.getID() != KeyEvent.KEY_PRESSED || !connected || mySide == null) {
+                return false; // Laisse passer l'événement
+            }
 
             if (mySide.equals("LEFT")) {
-                // Joueur 1 : touches fléchées
+                // Joueur TOP : touches fléchées
                 if (e.getKeyCode() == KeyEvent.VK_LEFT) {
                     out.println("MOVE:LEFT");
+                    return true; // Consomme l'événement
                 } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
                     out.println("MOVE:RIGHT");
+                    return true;
                 }
             } else if (mySide.equals("RIGHT")) {
-                // Joueur 2 : touches S (gauche) et D (droite)
-                if (e.getKeyCode() == KeyEvent.VK_S) {
+                // Joueur BOTTOM : touches Q (gauche) et D (droite)
+                if (e.getKeyCode() == KeyEvent.VK_Q) {
                     out.println("MOVE:LEFT");
+                    return true;
                 } else if (e.getKeyCode() == KeyEvent.VK_D) {
                     out.println("MOVE:RIGHT");
+                    return true;
                 }
             }
+            return false;
         }
     });
     setFocusable(true);
+    setFocusTraversalKeysEnabled(false);
 }
 
     private void startReceivingThread() {
@@ -455,67 +481,105 @@ private void setupKeyListeners() {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            // System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
-            //     + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
+            // Fond dégradé moderne (bleu foncé vers bleu nuit)
+            GradientPaint gradient = new GradientPaint(
+                0, 0, new Color(15, 32, 58),
+                0, getHeight(), new Color(32, 58, 92)
+            );
+            g2d.setPaint(gradient);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
 
-            System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
-System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
-System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
-            // Fond beige clair
-            g.setColor(new Color(245, 245, 220));
-            g.fillRect(0, 0, getWidth(), getHeight());
+            // Panneau de contrôle avec transparence
+            g2d.setColor(new Color(25, 42, 68, 200));
+            g2d.fillRoundRect(5, 5, getWidth() - 10, 75, 15, 15);
+            g2d.setColor(new Color(100, 200, 255, 100));
+            g2d.drawRoundRect(5, 5, getWidth() - 10, 75, 15, 15);
 
-            // Zone d'information en haut
-            g.setColor(Color.WHITE);
-            g.fillRect(0, 0, getWidth(), 140);
-
-            g.setColor(Color.BLACK);
-            g.setFont(new Font("Arial", Font.PLAIN, 11));
-            g.drawString("Adresse IP:", 10, 15);
-            g.drawString("Port:", 10, 40);
+            // Textes stylisés
+            g2d.setColor(new Color(200, 230, 255));
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
 
             if (connected) {
-                g.setColor(new Color(0, 150, 0));
-                g.drawString("Connecte - Vous etes: " +
-                    (mySide != null && mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"),
-                    200, 50);
-                g.setColor(Color.BLACK);
-                g.drawString("Utilisez LEFT/RIGHT pour bouger", 200, 70);
+                g2d.setColor(new Color(50, 255, 150));
+                String roleText = (mySide != null && mySide.equals("LEFT") ? "↑ JOUEUR HAUT" : "↓ JOUEUR BAS");
+                g2d.drawString("✅ Connect\u00e9 | " + roleText, 370, 25);
+                
+                g2d.setColor(new Color(180, 220, 255));
+                String controls = mySide != null && mySide.equals("LEFT") ? "← → pour bouger" : "Q/D pour bouger";
+                g2d.drawString("Contr\u00f4les: " + controls, 370, 45);
             } else {
-                g.setColor(Color.RED);
-                g.drawString("Non connecte", 200, 50);
+                g2d.setColor(new Color(255, 100, 100));
+                g2d.drawString("❌ D\u00e9connect\u00e9 - Cliquez Connexion", 370, 30);
             }
 
-            g.setColor(Color.GRAY);
-            g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
+            // Ligne de séparation élégante
+            g2d.setColor(new Color(100, 150, 200, 80));
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawLine(10, 85, getWidth() - 10, 85);
 
             // Dessiner les échiquiers
             topBoard.draw(g);
             bottomBoard.draw(g);
 
-            // Dessiner les raquettes horizontales
+            // Raquettes avec effet 3D et ombre
             int paddleTopY = topBoardY + (2 * cellSize) + 25;
             int paddleBottomY = bottomBoardY - 30;
 
-            g.setColor(Color.BLUE);
-            g.fillRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight());
+            // Raquette TOP avec dégradé cyan
+            GradientPaint paddleTopGrad = new GradientPaint(
+                topPaddle.getX(), paddleTopY, new Color(0, 200, 255),
+                topPaddle.getX() + topPaddle.getWidth(), paddleTopY, new Color(0, 120, 200)
+            );
+            g2d.setPaint(paddleTopGrad);
+            g2d.fillRoundRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight(), 8, 8);
+            g2d.setColor(new Color(255, 255, 255, 150));
+            g2d.drawRoundRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight(), 8, 8);
 
-            g.setColor(Color.RED);
-            g.fillRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight());
+            // Raquette BOTTOM avec dégradé orange
+            GradientPaint paddleBottomGrad = new GradientPaint(
+                bottomPaddle.getX(), paddleBottomY, new Color(255, 150, 0),
+                bottomPaddle.getX() + bottomPaddle.getWidth(), paddleBottomY, new Color(255, 100, 50)
+            );
+            g2d.setPaint(paddleBottomGrad);
+            g2d.fillRoundRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight(), 8, 8);
+            g2d.setColor(new Color(255, 255, 255, 150));
+            g2d.drawRoundRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight(), 8, 8);
 
-            // Dessiner la balle
-            g.setColor(Color.WHITE);
-            g.fillOval(ballX - GameConfig.BALL_RADIUS,
+            // Balle avec effet de lueur
+            int ballSize = GameConfig.BALL_RADIUS * 2;
+            
+            // Halo externe
+            RadialGradientPaint halo = new RadialGradientPaint(
+                ballX, ballY, GameConfig.BALL_RADIUS * 2.5f,
+                new float[]{0.0f, 1.0f},
+                new Color[]{new Color(255, 255, 100, 80), new Color(255, 255, 0, 0)}
+            );
+            g2d.setPaint(halo);
+            g2d.fillOval(ballX - (int)(GameConfig.BALL_RADIUS * 2.5),
+                        ballY - (int)(GameConfig.BALL_RADIUS * 2.5),
+                        (int)(GameConfig.BALL_RADIUS * 5),
+                        (int)(GameConfig.BALL_RADIUS * 5));
+            
+            // Balle principale avec dégradé radial
+            RadialGradientPaint ballGrad = new RadialGradientPaint(
+                ballX - GameConfig.BALL_RADIUS/2, ballY - GameConfig.BALL_RADIUS/2,
+                GameConfig.BALL_RADIUS * 1.5f,
+                new float[]{0.0f, 0.8f, 1.0f},
+                new Color[]{new Color(255, 255, 200), new Color(255, 230, 100), new Color(200, 180, 50)}
+            );
+            g2d.setPaint(ballGrad);
+            g2d.fillOval(ballX - GameConfig.BALL_RADIUS,
                        ballY - GameConfig.BALL_RADIUS,
-                       GameConfig.BALL_RADIUS * 2,
-                       GameConfig.BALL_RADIUS * 2);
-
-            g.setColor(Color.BLACK);
-            g.drawOval(ballX - GameConfig.BALL_RADIUS,
+                       ballSize, ballSize);
+            
+            g2d.setColor(new Color(255, 255, 255, 200));
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawOval(ballX - GameConfig.BALL_RADIUS,
                        ballY - GameConfig.BALL_RADIUS,
-                       GameConfig.BALL_RADIUS * 2,
-                       GameConfig.BALL_RADIUS * 2);
+                       ballSize, ballSize);
         }
     }
 

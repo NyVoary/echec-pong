@@ -1,15 +1,21 @@
 package server;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import configservice.ConfigServiceRemote;
-import common.Paddle;
+
 import common.Ball;
-import common.GameConfig;
-import common.Echequier;
 import common.ChessPiece;
+import common.Echequier;
+import common.GameConfig;
+import common.Paddle;
 import common.PieceType;
+import configservice.ConfigServiceRemote;
 
 public class GameEngine {
     public Paddle topPaddle;
@@ -86,15 +92,18 @@ public class GameEngine {
             Map<String, Integer> hpMap = configService.getPieceHP();
 
             // Affiche toutes les configs récupérées
+            System.out.println("╔════════════════════════════════════════╗");
+            System.out.println("║  ✅ CONFIGURATION EJB CHARGÉE         ║");
+            System.out.println("╚════════════════════════════════════════╝");
             System.out.println("=== CONFIGURATION JEU (depuis EJB) ===");
             for (Map.Entry<String, String> entry : config.entrySet()) {
-                System.out.println(entry.getKey() + " = " + entry.getValue());
+                System.out.println("  " + entry.getKey() + " = " + entry.getValue());
             }
             System.out.println("=== HP DES PIECES (depuis EJB) ===");
             for (Map.Entry<String, Integer> entry : hpMap.entrySet()) {
-                System.out.println(entry.getKey() + " = " + entry.getValue());
+                System.out.println("  " + entry.getKey() + " = " + entry.getValue());
             }
-            System.out.println("=======================================");
+            System.out.println("=======================================\n");
 
             // Applique la config à GameConfig
             common.GameConfig.NORMAL_SPEED       = Integer.parseInt(config.get("NORMAL_SPEED"));
@@ -123,10 +132,17 @@ public class GameEngine {
             // Applique les HP aux pièces via PieceType
             common.PieceType.applyHPFromMap(hpMap);
 
-            System.out.println("Configuration chargée depuis EJB !");
         } catch (Exception e) {
-            System.out.println("Erreur chargement config EJB : " + e.getMessage());
-            // Optionnel : fallback sur les fichiers si besoin
+            System.out.println("╔════════════════════════════════════════╗");
+            System.out.println("║  ⚠️  IMPOSSIBLE DE CHARGER L'EJB      ║");
+            System.out.println("╚════════════════════════════════════════╝");
+            System.out.println("❌ Erreur: " + e.getMessage());
+            System.out.println("\n💡 Solutions possibles:");
+            System.out.println("   1. Lancez WildFly avec: .\\wildfly.bat");
+            System.out.println("   2. Vérifiez que PostgreSQL est démarré");
+            System.out.println("   3. Vérifiez la datasource dans WildFly\n");
+            System.out.println("➡️  Le jeu continue avec la config par défaut\n");
+            System.out.println("=======================================\n");
         }
     }
 
