@@ -1,16 +1,13 @@
 package common;
 
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.File; // Ajoute cet import
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.List; // Ajoute cet import
 
 import javax.imageio.ImageIO;
 
@@ -183,33 +180,19 @@ public class Echequier {
     }
 
     public void draw(Graphics g) {
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        
-        // Dessiner les cases avec couleurs vives modernes
+        // Dessiner les cases avec nouvelles couleurs
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < cols; col++) {
-                int caseX = x + col * cellWidth;
-                int caseY = y + row * cellHeight;
-                
                 if ((row + col) % 2 == 0) {
                     // Cases claires: beige doré
-                    g2d.setColor(new Color(240, 217, 181));
+                    g.setColor(new Color(240, 217, 181));
                 } else {
                     // Cases foncées: marron chocolat
-                    g2d.setColor(new Color(181, 136, 99));
+                    g.setColor(new Color(181, 136, 99));
                 }
-                g2d.fillRect(caseX, caseY, cellWidth, cellHeight);
-                
-                // Bordures avec effet 3D subtil
-                g2d.setColor(new Color(0, 0, 0, 60));
-                g2d.setStroke(new BasicStroke(2));
-                g2d.drawRect(caseX, caseY, cellWidth, cellHeight);
-                
-                // Reflet dans le coin supérieur gauche
-                g2d.setColor(new Color(255, 255, 255, 40));
-                g2d.drawLine(caseX + 2, caseY + 2, caseX + cellWidth/3, caseY + 2);
-                g2d.drawLine(caseX + 2, caseY + 2, caseX + 2, caseY + cellHeight/3);
+                g.fillRect(x + col * cellWidth, y + row * cellHeight, cellWidth, cellHeight);
+                g.setColor(Color.BLACK);
+                g.drawRect(x + col * cellWidth, y + row * cellHeight, cellWidth, cellHeight);
             }
         }
         // Dessiner les pièces

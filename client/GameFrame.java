@@ -1,16 +1,11 @@
 package client;
-import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
-import java.awt.GradientPaint;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.RadialGradientPaint;
-import java.awt.RenderingHints;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -74,11 +69,11 @@ public class GameFrame extends JFrame {
     private int ballY;
 
     public GameFrame() {
-        setTitle("♟ Chess Battle Arena - Multiplayer Edition ♟");
+        setTitle("Échec Pong - Client");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Taille par défaut (avant d'avoir la vraie config) - Élargie pour mieux voir
-        setSize(950, 700);
+        // Taille par défaut (avant d'avoir la vraie config)
+        setSize(800, 600);
         setResizable(false);
         setLocationRelativeTo(null);
 
@@ -483,92 +478,65 @@ private void setupKeyListeners() {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            Graphics2D g2d = (Graphics2D) g;
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
 System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
 System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
-            // Fond dégradé moderne (bleu foncé vers violet)
-            GradientPaint bgGradient = new GradientPaint(0, 0, new Color(25, 42, 86), 
-                                                          0, getHeight(), new Color(58, 27, 82));
-            g2d.setPaint(bgGradient);
-            g2d.fillRect(0, 0, getWidth(), getHeight());
+            // Fond gris-bleu foncé
+            g.setColor(new Color(45, 52, 70));
+            g.fillRect(0, 0, getWidth(), getHeight());
 
-            // Zone d'information en haut avec dégradé cyan/turquoise
-            GradientPaint headerGradient = new GradientPaint(0, 0, new Color(0, 150, 199), 
-                                                              getWidth(), 0, new Color(0, 199, 176));
-            g2d.setPaint(headerGradient);
-            g2d.fillRoundRect(5, 5, getWidth() - 10, 145, 20, 20);
+            // Zone d'information en haut - turquoise
+            g.setColor(new Color(0, 180, 180));
+            g.fillRect(0, 0, getWidth(), 140);
 
-            g2d.setColor(new Color(255, 255, 255, 230));
-            g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
-            g2d.drawString("🌐 Server IP:", 15, 20);
-            g2d.drawString("🔌 Port:", 15, 55);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 12));
+            g.drawString("Adresse IP:", 10, 15);
+            g.drawString("Port:", 10, 40);
 
             if (connected) {
-                g2d.setColor(new Color(0, 255, 128));
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                g2d.drawString("✓ CONNECTED - Player: " +
-                    (mySide != null && mySide.equals("LEFT") ? "⬆ TOP (J2)" : "⬇ BOTTOM (J1)"),
-                    220, 55);
-                g2d.setColor(new Color(255, 255, 100));
-                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                g2d.drawString("⌨ Controls: ← LEFT / RIGHT →", 220, 80);
+                g.setColor(new Color(0, 255, 100));
+                g.setFont(new Font("Arial", Font.BOLD, 13));
+                g.drawString("Connecte - Vous etes: " +
+                    (mySide != null && mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"),
+                    200, 50);
+                g.setColor(Color.WHITE);
+                g.setFont(new Font("Arial", Font.PLAIN, 11));
+                g.drawString("Utilisez LEFT/RIGHT pour bouger", 200, 70);
             } else {
-                g2d.setColor(new Color(255, 80, 80));
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                g2d.drawString("✗ DISCONNECTED", 220, 55);
+                g.setColor(new Color(255, 100, 100));
+                g.setFont(new Font("Arial", Font.BOLD, 13));
+                g.drawString("Non connecte", 200, 50);
             }
 
-            g2d.setColor(new Color(220, 220, 255));
-            g2d.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-            g2d.drawString("🎮 Board Columns (even, max 8)", 15, 120);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.PLAIN, 11));
+            g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
 
             // Dessiner les échiquiers
             topBoard.draw(g);
             bottomBoard.draw(g);
 
-            // Dessiner les raquettes horizontales avec effet 3D et dégradés
+            // Dessiner les raquettes horizontales - nouvelles couleurs
             int paddleTopY = topBoardY + (2 * cellSize) + 25;
             int paddleBottomY = bottomBoardY - 30;
 
-            // Paddle TOP avec dégradé cyan lumineux
-            GradientPaint topPaddleGradient = new GradientPaint(
-                topPaddle.getX(), paddleTopY, new Color(0, 200, 255),
-                topPaddle.getX(), paddleTopY + topPaddle.getHeight(), new Color(0, 120, 255));
-            g2d.setPaint(topPaddleGradient);
-            g2d.fillRoundRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight(), 12, 12);
-            g2d.setColor(new Color(255, 255, 255, 100));
-            g2d.drawRoundRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight(), 12, 12);
+            g.setColor(new Color(0, 180, 255)); // Bleu cyan
+            g.fillRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight());
 
-            // Paddle BOTTOM avec dégradé orange/rouge vif
-            GradientPaint bottomPaddleGradient = new GradientPaint(
-                bottomPaddle.getX(), paddleBottomY, new Color(255, 100, 50),
-                bottomPaddle.getX(), paddleBottomY + bottomPaddle.getHeight(), new Color(255, 50, 100));
-            g2d.setPaint(bottomPaddleGradient);
-            g2d.fillRoundRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight(), 12, 12);
-            g2d.setColor(new Color(255, 255, 255, 100));
-            g2d.drawRoundRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight(), 12, 12);
+            g.setColor(new Color(255, 100, 50)); // Orange vif
+            g.fillRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight());
 
-            // Dessiner la balle avec effet lumineux (glow)
-            RadialGradientPaint ballGradient = new RadialGradientPaint(
-                ballX, ballY, GameConfig.BALL_RADIUS * 1.5f,
-                new float[]{0f, 0.7f, 1f},
-                new Color[]{new Color(255, 255, 100), new Color(255, 200, 0), new Color(255, 150, 0, 0)});
-            g2d.setPaint(ballGradient);
-            g2d.fillOval(ballX - GameConfig.BALL_RADIUS - 3,
-                       ballY - GameConfig.BALL_RADIUS - 3,
-                       (GameConfig.BALL_RADIUS + 3) * 2,
-                       (GameConfig.BALL_RADIUS + 3) * 2);
-            g2d.setColor(new Color(255, 255, 200));
-            g2d.fillOval(ballX - GameConfig.BALL_RADIUS,
+            // Dessiner la balle - jaune vif
+            g.setColor(new Color(255, 230, 0));
+            g.fillOval(ballX - GameConfig.BALL_RADIUS,
                        ballY - GameConfig.BALL_RADIUS,
                        GameConfig.BALL_RADIUS * 2,
                        GameConfig.BALL_RADIUS * 2);
-            g2d.setColor(new Color(255, 200, 0));
-            g2d.setStroke(new BasicStroke(2));
-            g2d.drawOval(ballX - GameConfig.BALL_RADIUS,
+
+            g.setColor(new Color(200, 180, 0));
+            g.drawOval(ballX - GameConfig.BALL_RADIUS,
                        ballY - GameConfig.BALL_RADIUS,
                        GameConfig.BALL_RADIUS * 2,
                        GameConfig.BALL_RADIUS * 2);
