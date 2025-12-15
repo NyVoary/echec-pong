@@ -130,6 +130,23 @@ public class GameEngine {
         }
     }
 
+    public void setPieceHPInEJB(String pieceType, int hp) {
+        try {
+            Properties props = new Properties();
+            props.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
+            props.put(Context.PROVIDER_URL, "http-remoting://localhost:8080");
+            Context ctx = new InitialContext(props);
+
+            ConfigServiceRemote configService = (ConfigServiceRemote) ctx.lookup(
+                "ejb:/configservice//ConfigServiceBean!configservice.ConfigServiceRemote"
+            );
+            configService.setPieceHP(pieceType, hp);
+            System.out.println("HP de " + pieceType + " mis à jour à " + hp + " en base !");
+        } catch (Exception e) {
+            System.out.println("Erreur setPieceHPInEJB : " + e.getMessage());
+        }
+    }
+
     // === GESTION DES JOUEURS ===
     public synchronized void addPlayer(String side, ClientHandler handler) {
         String id = "PLAYER_" + side + "_" + System.currentTimeMillis();

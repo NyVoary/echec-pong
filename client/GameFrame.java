@@ -552,22 +552,22 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
                     int hp = Integer.parseInt(fields.get(type).getText().trim());
                     type.setMaxHP(hp);
                     props.setProperty(type.name(), String.valueOf(hp));
+                    // Envoie la nouvelle valeur au serveur (EJB)
+                    if (GameFrame.this.out != null) {
+                        GameFrame.this.out.println("SET_HP:" + type.name() + ":" + hp);
+                    }
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Valeur invalide pour " + type.getDisplayName());
                     return;
                 }
             }
-            // Sauvegarde dans le fichier vie.txt
+            // Optionnel : sauvegarde locale (si tu veux garder un backup)
             try (FileWriter fw = new FileWriter("config/vie.txt")) {
                 for (PieceType type : PieceType.values()) {
                     fw.write(type.name() + "=" + type.getMaxHP() + "\n");
                 }
                 fw.flush();
                 JOptionPane.showMessageDialog(this, "Vies enregistrées !");
-                // ✨ Correction : utiliser la référence du parent
-                if (GameFrame.this.out != null) {
-                    GameFrame.this.out.println("RELOAD_HP");
-                }
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
             }

@@ -94,6 +94,16 @@ public class ClientHandler extends Thread {
         }
         else if (command.equals("RELOAD_HP")) {
             gameEngine.loadConfigFromEJB();
+        } else if (command.startsWith("SET_HP:")) {
+            // Format: SET_HP:PIECE_TYPE:HP
+            String[] parts = command.split(":");
+            if (parts.length == 3) {
+                String pieceType = parts[1];
+                int hp = Integer.parseInt(parts[2]);
+                gameEngine.setPieceHPInEJB(pieceType, hp);
+                gameEngine.loadConfigFromEJB(); // recharge la config pour tous
+                gameEngine.broadcastState();
+            }
         }
     }
 
