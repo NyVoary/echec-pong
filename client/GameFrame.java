@@ -1,16 +1,44 @@
 package client;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
-import java.net.*;
-import javax.swing.*;
-import common.Paddle;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RadialGradientPaint;
+import java.awt.RenderingHints;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.io.BufferedReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
+import common.ChessPiece;
 import common.Echequier;
 import common.GameConfig;
-import common.ChessPiece;
+import common.Paddle;
 import common.PieceType;
-import java.util.Properties;
-import java.util.*;
 
 public class GameFrame extends JFrame {
     private PrintWriter out;
@@ -46,11 +74,11 @@ public class GameFrame extends JFrame {
     private int ballY;
 
     public GameFrame() {
-        setTitle("Échec Pong - Client");
+        setTitle("♟ Chess Battle Arena - Multiplayer Edition ♟");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Taille par défaut (avant d'avoir la vraie config)
-        setSize(800, 600);
+        // Taille par défaut (avant d'avoir la vraie config) - Élargie pour mieux voir
+        setSize(950, 700);
         setResizable(false);
         setLocationRelativeTo(null);
 
@@ -88,12 +116,12 @@ public class GameFrame extends JFrame {
         vieConfigButton.setBounds(400, 25, 180, 25);
         gamePanel.add(vieConfigButton);
 
-        ipField.setBounds(10, 25, 150, 25);
-        portField.setBounds(10, 55, 150, 25);
-        connectButton.setBounds(10, 85, 150, 25);
+        ipField.setBounds(15, 30, 170, 28);
+        portField.setBounds(15, 65, 170, 28);
+        connectButton.setBounds(15, 100, 170, 32);
 
-        colsField.setBounds(200, 25, 100, 25);
-        updateColsButton.setBounds(200, 55, 150, 25);
+        colsField.setBounds(220, 30, 110, 28);
+        updateColsButton.setBounds(220, 65, 170, 32);
 
         gamePanel.setLayout(null);
         gamePanel.add(ipField);
@@ -455,64 +483,92 @@ private void setupKeyListeners() {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-
-            // System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
-            //     + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
 System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
 System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
-            // Fond beige clair
-            g.setColor(new Color(245, 245, 220));
-            g.fillRect(0, 0, getWidth(), getHeight());
+            // Fond dégradé moderne (bleu foncé vers violet)
+            GradientPaint bgGradient = new GradientPaint(0, 0, new Color(25, 42, 86), 
+                                                          0, getHeight(), new Color(58, 27, 82));
+            g2d.setPaint(bgGradient);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
 
-            // Zone d'information en haut
-            g.setColor(Color.WHITE);
-            g.fillRect(0, 0, getWidth(), 140);
+            // Zone d'information en haut avec dégradé cyan/turquoise
+            GradientPaint headerGradient = new GradientPaint(0, 0, new Color(0, 150, 199), 
+                                                              getWidth(), 0, new Color(0, 199, 176));
+            g2d.setPaint(headerGradient);
+            g2d.fillRoundRect(5, 5, getWidth() - 10, 145, 20, 20);
 
-            g.setColor(Color.BLACK);
-            g.setFont(new Font("Arial", Font.PLAIN, 11));
-            g.drawString("Adresse IP:", 10, 15);
-            g.drawString("Port:", 10, 40);
+            g2d.setColor(new Color(255, 255, 255, 230));
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            g2d.drawString("🌐 Server IP:", 15, 20);
+            g2d.drawString("🔌 Port:", 15, 55);
 
             if (connected) {
-                g.setColor(new Color(0, 150, 0));
-                g.drawString("Connecte - Vous etes: " +
-                    (mySide != null && mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"),
-                    200, 50);
-                g.setColor(Color.BLACK);
-                g.drawString("Utilisez LEFT/RIGHT pour bouger", 200, 70);
+                g2d.setColor(new Color(0, 255, 128));
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                g2d.drawString("✓ CONNECTED - Player: " +
+                    (mySide != null && mySide.equals("LEFT") ? "⬆ TOP (J2)" : "⬇ BOTTOM (J1)"),
+                    220, 55);
+                g2d.setColor(new Color(255, 255, 100));
+                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                g2d.drawString("⌨ Controls: ← LEFT / RIGHT →", 220, 80);
             } else {
-                g.setColor(Color.RED);
-                g.drawString("Non connecte", 200, 50);
+                g2d.setColor(new Color(255, 80, 80));
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                g2d.drawString("✗ DISCONNECTED", 220, 55);
             }
 
-            g.setColor(Color.GRAY);
-            g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
+            g2d.setColor(new Color(220, 220, 255));
+            g2d.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            g2d.drawString("🎮 Board Columns (even, max 8)", 15, 120);
 
             // Dessiner les échiquiers
             topBoard.draw(g);
             bottomBoard.draw(g);
 
-            // Dessiner les raquettes horizontales
+            // Dessiner les raquettes horizontales avec effet 3D et dégradés
             int paddleTopY = topBoardY + (2 * cellSize) + 25;
             int paddleBottomY = bottomBoardY - 30;
 
-            g.setColor(Color.BLUE);
-            g.fillRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight());
+            // Paddle TOP avec dégradé cyan lumineux
+            GradientPaint topPaddleGradient = new GradientPaint(
+                topPaddle.getX(), paddleTopY, new Color(0, 200, 255),
+                topPaddle.getX(), paddleTopY + topPaddle.getHeight(), new Color(0, 120, 255));
+            g2d.setPaint(topPaddleGradient);
+            g2d.fillRoundRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight(), 12, 12);
+            g2d.setColor(new Color(255, 255, 255, 100));
+            g2d.drawRoundRect(topPaddle.getX(), paddleTopY, topPaddle.getWidth(), topPaddle.getHeight(), 12, 12);
 
-            g.setColor(Color.RED);
-            g.fillRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight());
+            // Paddle BOTTOM avec dégradé orange/rouge vif
+            GradientPaint bottomPaddleGradient = new GradientPaint(
+                bottomPaddle.getX(), paddleBottomY, new Color(255, 100, 50),
+                bottomPaddle.getX(), paddleBottomY + bottomPaddle.getHeight(), new Color(255, 50, 100));
+            g2d.setPaint(bottomPaddleGradient);
+            g2d.fillRoundRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight(), 12, 12);
+            g2d.setColor(new Color(255, 255, 255, 100));
+            g2d.drawRoundRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight(), 12, 12);
 
-            // Dessiner la balle
-            g.setColor(Color.WHITE);
-            g.fillOval(ballX - GameConfig.BALL_RADIUS,
+            // Dessiner la balle avec effet lumineux (glow)
+            RadialGradientPaint ballGradient = new RadialGradientPaint(
+                ballX, ballY, GameConfig.BALL_RADIUS * 1.5f,
+                new float[]{0f, 0.7f, 1f},
+                new Color[]{new Color(255, 255, 100), new Color(255, 200, 0), new Color(255, 150, 0, 0)});
+            g2d.setPaint(ballGradient);
+            g2d.fillOval(ballX - GameConfig.BALL_RADIUS - 3,
+                       ballY - GameConfig.BALL_RADIUS - 3,
+                       (GameConfig.BALL_RADIUS + 3) * 2,
+                       (GameConfig.BALL_RADIUS + 3) * 2);
+            g2d.setColor(new Color(255, 255, 200));
+            g2d.fillOval(ballX - GameConfig.BALL_RADIUS,
                        ballY - GameConfig.BALL_RADIUS,
                        GameConfig.BALL_RADIUS * 2,
                        GameConfig.BALL_RADIUS * 2);
-
-            g.setColor(Color.BLACK);
-            g.drawOval(ballX - GameConfig.BALL_RADIUS,
+            g2d.setColor(new Color(255, 200, 0));
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawOval(ballX - GameConfig.BALL_RADIUS,
                        ballY - GameConfig.BALL_RADIUS,
                        GameConfig.BALL_RADIUS * 2,
                        GameConfig.BALL_RADIUS * 2);
