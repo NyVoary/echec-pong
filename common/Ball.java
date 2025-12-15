@@ -41,7 +41,7 @@ public class Ball {
         x += speedX;
         y += speedY;
 
-        System.out.println("Ball position: x=" + x + ", y=" + y);
+        // System.out.println("Ball position: x=" + x + ", y=" + y);
 
         
         // Rebond sur les bords gauche et droit
@@ -90,7 +90,7 @@ public class Ball {
             speedX = Math.abs(speedX);
             x = rectX + rectWidth + radius;
         }
-        System.out.println("Test collision: Ball(" + x + "," + y + ") vs Rect(" + rectX + "," + rectY + "," + rectWidth + "," + rectHeight + ")");
+        //System.out.println("Test collision: Ball(" + x + "," + y + ") vs Rect(" + rectX + "," + rectY + "," + rectWidth + "," + rectHeight + ")");
     }
 }
     

@@ -216,11 +216,11 @@ public class GameEngine {
         private synchronized void updateGame() {
             ball.update();
 
-            System.out.println(
-                "Ball: x=" + ball.getX() + ", y=" + ball.getY() +
-                " | topBoard: x=" + topBoard.getX() + ", y=" + topBoard.getY() +
-                " | bottomBoard: x=" + bottomBoard.getX() + ", y=" + bottomBoard.getY()
-            );
+            // System.out.println(
+            //     "Ball: x=" + ball.getX() + ", y=" + ball.getY() +
+            //     " | topBoard: x=" + topBoard.getX() + ", y=" + topBoard.getY() +
+            //     " | bottomBoard: x=" + bottomBoard.getX() + ", y=" + bottomBoard.getY()
+            // );
 
             // System.out.println("Serveur - Ball: x=" + ball.getX() + ", y=" + ball.getY());
             // System.out.println("Serveur - topPaddle: x=" + topPaddle.getX() + ", y=" + topPaddle.getY());

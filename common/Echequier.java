@@ -152,9 +152,9 @@ public class Echequier {
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < cols; col++) {
                 Carre carre = cases[row][col];
-                System.out.println("Case (" + row + "," + col + ") hasPiece=" + carre.hasPiece() +
-                    " | caseX=" + carre.getX() + ", caseY=" + carre.getY() +
-                    " | Ball: x=" + ball.getX() + ", y=" + ball.getY());
+                // System.out.println("Case (" + row + "," + col + ") hasPiece=" + carre.hasPiece() +
+                //     " | caseX=" + carre.getX() + ", caseY=" + carre.getY() +
+                //     " | Ball: x=" + ball.getX() + ", y=" + ball.getY());
                 if (!carre.hasPiece()) continue;
 
                 int caseX = carre.getX();
