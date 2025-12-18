@@ -32,6 +32,7 @@ public class GameEngine {
     // Barre de progression (alea)
     private int progressBarCurrent = 0;  // Progression actuelle
     private int progressBarCapacity = 10; // Capacite max (configurable)
+    private boolean readyToActivateSuperPower = false; // Flag pour activer à la prochaine frame
     
     private boolean gameRunning = false;
     private Thread gameLoopThread;
@@ -231,6 +232,13 @@ public class GameEngine {
     }
 
         private synchronized void updateGame() {
+            // Activer le super pouvoir au début de la frame si nécessaire
+            if (readyToActivateSuperPower) {
+                ball.activateSuperPower(2); // Pouvoir de -3 (2 + 1 de base)
+                readyToActivateSuperPower = false;
+                System.out.println("🌟 SUPER POUVOIR ACTIVÉ ! Dégâts: 3");
+            }
+            
             ball.update();
 
             System.out.println(
@@ -254,11 +262,10 @@ public class GameEngine {
                 // Augmenter la barre de progression
                 progressBarCurrent++;
                 
-                // Si la barre est pleine, activer le super pouvoir
+                // Si la barre est pleine, préparer l'activation du super pouvoir (s'activera à la prochaine frame)
                 if (progressBarCurrent >= progressBarCapacity && !ball.hasSuperPower()) {
-                    ball.activateSuperPower(3); // Pouvoir de -3
+                    readyToActivateSuperPower = true;
                     progressBarCurrent = 0; // Reset la barre
-                    System.out.println("🌟 SUPER POUVOIR ACTIVÉ ! Dégâts: 3");
                 }
             }
             
@@ -312,6 +319,7 @@ public class GameEngine {
         ball.reset(GameConfig.BALL_START_X, GameConfig.BALL_START_Y);
         ball.deactivateSuperPower(); // Désactiver le super pouvoir
         progressBarCurrent = 0; // Reset la barre
+        readyToActivateSuperPower = false; // Reset le flag
     }
 
     // === MOUVEMENT DES RAQUETTES ===
