@@ -173,12 +173,16 @@ public class Echequier {
                         
                         ChessPiece piece = carre.getPiece();
                         int pieceHP = piece.getCurrentHP();
+                        int damage = ball.getSuperPowerDamage();
+                        
+                        // Calculer les dégâts réels infligés (min entre pouvoir et HP du pion)
+                        int actualDamage = Math.min(damage, pieceHP);
                         
                         // La balle inflige ses dégâts de super pouvoir
-                        piece.takeDamage(ball.getSuperPowerDamage());
+                        piece.takeDamage(damage);
                         
-                        // Réduit le pouvoir de la balle du HP du pion
-                        ball.reduceSuperPowerDamage(pieceHP);
+                        // Réduit le pouvoir de la balle des dégâts réellement infligés
+                        ball.reduceSuperPowerDamage(actualDamage);
                         
                         collision = true;
                         

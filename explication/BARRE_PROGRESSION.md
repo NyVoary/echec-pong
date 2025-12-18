@@ -29,10 +29,12 @@ Nouvelle fonctionnalité qui ajoute une barre de progression partagée entre les
 - **Transperce les pions** au lieu de rebondir
 - Inflige **3 points de dégâts** par défaut
 - **Capacité résiduelle** : Si un pion a moins de 3 PV :
-  - Le tue instantanément
+  - Le tue instantanément (ou inflige les dégâts disponibles)
   - Continue avec le reste du pouvoir
-  - Exemple : Pion avec 1 PV → meurt, balle garde -2 de pouvoir
-  - Peut tuer plusieurs pions d'affilée
+  - La balle réduit son pouvoir des **dégâts réellement infligés**, pas des HP totaux
+  - Exemple 1 : Pion avec 1 PV → meurt avec 1 dégât, balle garde -2 de pouvoir
+  - Exemple 2 : Pion avec 5 PV → perd 3 HP, balle épuise son pouvoir (-0)
+  - Peut tuer plusieurs pions d'affilée tant qu'il reste du pouvoir
 
 #### Désactivation du Super Pouvoir
 Le super pouvoir s'arrête dans 3 cas :
@@ -80,6 +82,7 @@ public static int PROGRESS_BAR_CAPACITY; // Nouvelle config
 #### 3. `common/Echequier.java`
 - Modification de `bounceBallOnPiece()` pour gérer le mode super pouvoir
 - Mode transperce : pas de rebond, dégâts multiples
+- **Calcul correct** : Le pouvoir de la balle diminue des dégâts réellement infligés (min entre pouvoir et HP du pion)
 
 #### 4. `server/GameEngine.java`
 - Variables : `progressBarCurrent`, `progressBarCapacity`
@@ -132,11 +135,11 @@ PROGRESS_CAPACITY:n
 4. **...**
 5. **Barre pleine** : 10/10 → Super pouvoir activé (-3 dégâts)
 6. **Balle touche pion (2 PV)** :
-   - Pion meurt
-   - Super pouvoir restant : -1
+   - Pion perd 2 PV (meurt)
+   - Super pouvoir réduit de 2 (reste -1)
 7. **Balle touche pion (3 PV)** :
    - Pion perd 1 PV (reste 2 PV)
-   - Super pouvoir épuisé
+   - Super pouvoir épuisé (0)
 8. **Retour au mode normal** : Barre à 0/10, cycle recommence
 
 ## Notes de Conception
