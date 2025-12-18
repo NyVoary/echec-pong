@@ -1,11 +1,16 @@
 package client;
+import java.awt.AWTEvent;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -67,6 +72,13 @@ public class GameFrame extends JFrame {
 
     private int ballX;
     private int ballY;
+    
+    // Suivre l'état des touches pour éviter les répétitions
+    private boolean leftKeyPressed = false;
+    private boolean rightKeyPressed = false;
+    private boolean sKeyPressed = false;
+    private boolean dKeyPressed = false;
+    private AWTEventListener globalKeyListener;
 
     public GameFrame() {
         setTitle("Échec Pong - Client");
@@ -259,52 +271,67 @@ public class GameFrame extends JFrame {
     }
 
 private void setupKeyListeners() {
-    addKeyListener(new KeyAdapter() {
+    // Écouteur global qui capture TOUTES les touches du système
+    // Fonctionne même si la fenêtre n'a pas le focus
+    globalKeyListener = new AWTEventListener() {
         @Override
-        public void keyPressed(KeyEvent e) {
-            if (!connected || mySide == null) return;
-
-            if (mySide.equals("LEFT")) {
-                // Joueur 1 : touches fléchées
-                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                    out.println("MOVE:LEFT");
-                } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-                    out.println("MOVE:RIGHT");
-                }
-            } else if (mySide.equals("RIGHT")) {
-                // Joueur 2 : touches S (gauche) et D (droite)
-                if (e.getKeyCode() == KeyEvent.VK_S) {
-                    out.println("MOVE:LEFT");
-                } else if (e.getKeyCode() == KeyEvent.VK_D) {
-                    out.println("MOVE:RIGHT");
+        public void eventDispatched(AWTEvent event) {
+            if (!connected || mySide == null || out == null) return;
+            
+            if (event instanceof KeyEvent) {
+                KeyEvent ke = (KeyEvent) event;
+                
+                if (ke.getID() == KeyEvent.KEY_PRESSED) {
+                    // Joueur 1 (LEFT/BOTTOM) : touches fléchées
+                    if (mySide.equals("LEFT")) {
+                        if (ke.getKeyCode() == KeyEvent.VK_LEFT && !leftKeyPressed) {
+                            out.println("MOVE:LEFT");
+                            leftKeyPressed = true;
+                        } else if (ke.getKeyCode() == KeyEvent.VK_RIGHT && !rightKeyPressed) {
+                            out.println("MOVE:RIGHT");
+                            rightKeyPressed = true;
+                        }
+                    }
+                    // Joueur 2 (RIGHT/TOP) : touches S et D
+                    else if (mySide.equals("RIGHT")) {
+                        if (ke.getKeyCode() == KeyEvent.VK_S && !sKeyPressed) {
+                            out.println("MOVE:LEFT");
+                            sKeyPressed = true;
+                        } else if (ke.getKeyCode() == KeyEvent.VK_D && !dKeyPressed) {
+                            out.println("MOVE:RIGHT");
+                            dKeyPressed = true;
+                        }
+                    }
+                } else if (ke.getID() == KeyEvent.KEY_RELEASED) {
+                    // Réinitialiser l'état des touches au relâchement
+                    if (ke.getKeyCode() == KeyEvent.VK_LEFT) leftKeyPressed = false;
+                    if (ke.getKeyCode() == KeyEvent.VK_RIGHT) rightKeyPressed = false;
+                    if (ke.getKeyCode() == KeyEvent.VK_S) sKeyPressed = false;
+                    if (ke.getKeyCode() == KeyEvent.VK_D) dKeyPressed = false;
                 }
             }
         }
+    };
+    
+    // Enregistrer l'écouteur pour capturer TOUS les événements clavier
+    Toolkit.getDefaultToolkit().addAWTEventListener(
+        globalKeyListener,
+        AWTEvent.KEY_EVENT_MASK
+    );
+    
+    // Nettoyer l'écouteur quand la fenêtre se ferme
+    addWindowListener(new java.awt.event.WindowAdapter() {
+        @Override
+        public void windowClosing(java.awt.event.WindowEvent e) {
+            if (globalKeyListener != null) {
+                Toolkit.getDefaultToolkit().removeAWTEventListener(globalKeyListener);
+            }
+        }
     });
-    setFocusable(true);
-    requestFocusInWindow();
 }
 
 private void setupFocusManagement() {
-    // Récupère le focus automatiquement quand la souris entre dans la fenêtre
-    addMouseListener(new java.awt.event.MouseAdapter() {
-        @Override
-        public void mouseEntered(java.awt.event.MouseEvent e) {
-            requestFocusInWindow();
-            gamePanel.repaint();
-        }
-    });
-    
-    // Même chose pour le panel de jeu
-    gamePanel.addMouseListener(new java.awt.event.MouseAdapter() {
-        @Override
-        public void mouseEntered(java.awt.event.MouseEvent e) {
-            requestFocusInWindow();
-            gamePanel.repaint();
-        }
-    });
-    
-    // Repaint quand le focus change pour afficher l'indicateur
+    // Repaint pour mettre à jour l'indicateur visuel uniquement
     addFocusListener(new java.awt.event.FocusAdapter() {
         @Override
         public void focusGained(java.awt.event.FocusEvent e) {
@@ -534,11 +561,11 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
                 g.setColor(new Color(0, 255, 100));
                 g.setFont(new Font("Arial", Font.BOLD, 13));
                 g.drawString("Connecte - Vous etes: " +
-                    (mySide != null && mySide.equals("LEFT") ? "TOP (J2)" : "BOTTOM (J1)"),
+                    (mySide != null && mySide.equals("LEFT") ? "BOTTOM (J1) - Fleches" : "TOP (J2) - S/D"),
                     200, 50);
-                g.setColor(Color.WHITE);
-                g.setFont(new Font("Arial", Font.PLAIN, 11));
-                g.drawString("Utilisez LEFT/RIGHT pour bouger", 200, 70);
+                g.setColor(new Color(255, 255, 100));
+                g.setFont(new Font("Arial", Font.BOLD, 11));
+                g.drawString("✓ Touches actives en permanence !", 200, 70);
             } else {
                 g.setColor(new Color(255, 100, 100));
                 g.setFont(new Font("Arial", Font.BOLD, 13));
@@ -549,26 +576,12 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
             g.setFont(new Font("Arial", Font.PLAIN, 11));
             g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
 
-            // Indicateur de focus (bordure verte si fenêtre active)
-            if (GameFrame.this.hasFocus()) {
-                g.setColor(new Color(0, 255, 100));
+            // Indicateur visuel simplifié (optionnel - juste pour montrer quelle fenêtre est au premier plan)
+            if (connected && GameFrame.this.hasFocus()) {
+                g.setColor(new Color(0, 255, 100, 80));
                 Graphics2D g2d = (Graphics2D) g;
-                g2d.setStroke(new BasicStroke(4));
+                g2d.setStroke(new BasicStroke(3));
                 g2d.drawRect(2, 142, getWidth() - 4, getHeight() - 144);
-                
-                // Message "ACTIF"
-                g.setFont(new Font("Arial", Font.BOLD, 14));
-                g.drawString("⚡ FENETRE ACTIVE", getWidth() - 170, 130);
-            } else {
-                g.setColor(new Color(150, 150, 150, 100));
-                Graphics2D g2d = (Graphics2D) g;
-                g2d.setStroke(new BasicStroke(2));
-                g2d.drawRect(2, 142, getWidth() - 4, getHeight() - 144);
-                
-                // Message "Survolez la fenêtre"
-                g.setColor(new Color(200, 200, 200));
-                g.setFont(new Font("Arial", Font.ITALIC, 11));
-                g.drawString("(Survolez pour activer)", getWidth() - 180, 130);
             }
 
             // Dessiner les échiquiers
