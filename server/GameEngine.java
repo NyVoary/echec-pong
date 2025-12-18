@@ -25,24 +25,22 @@ public class GameEngine {
     public Ball ball;
     public List<ClientHandler> clients = new ArrayList<>();
     public Map<String, Player> players = new HashMap<>();
-    public Player topPlayer;      // Ajouté
-    public Player bottomPlayer;   // Ajouté
+    public Player topPlayer;    
+    public Player bottomPlayer;
     private int boardCols = 8;
     
-    // Barre de progression partagée
+    // Barre de progression (alea)
     private int progressBarCurrent = 0;  // Progression actuelle
-    private int progressBarCapacity = 10; // Capacité max (configurable)
+    private int progressBarCapacity = 10; // Capacite max (configurable)
     
     private boolean gameRunning = false;
     private Thread gameLoopThread;
 
     public GameEngine() {
-        // Charger la config et les HP depuis l'EJB
         loadConfigFromEJB();
 
-        // Initialiser les paddles et boards AVEC la bonne config
         topPaddle = new Paddle(
-            GameConfig.BOARD_X + (GameConfig.CELL_SIZE * 2), // ou la formule que tu veux
+            GameConfig.BOARD_X + (GameConfig.CELL_SIZE * 2), 
             GameConfig.TOP_BOARD_Y + (2 * GameConfig.CELL_SIZE) + 25,
             GameConfig.PADDLE_WIDTH,
             GameConfig.PADDLE_HEIGHT
@@ -405,6 +403,7 @@ public class GameEngine {
     return null;
 }
 
+    // Broadcast de l'etat de la barre (alea)
 public String getGameState() {
     StringBuilder sb = new StringBuilder();
     sb.append("STATE:");

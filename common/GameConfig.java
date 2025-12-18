@@ -23,5 +23,6 @@ public class GameConfig {
     public static int TOP_BOARD_Y;
     public static int BOTTOM_BOARD_Y;
     public static int CELL_SIZE;
-    public static int PROGRESS_BAR_CAPACITY; // Capacité configurable de la barre de progression
+    // asiana an'ilay barre de progression (alea)
+    public static int PROGRESS_BAR_CAPACITY;
 }

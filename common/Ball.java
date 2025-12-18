@@ -98,28 +98,6 @@ public class Ball {
     }
 }
     
-    // === REBOND SUR PADDLE ===
-    // public void bounceOnPaddle(int paddleX, int paddleY, int paddleWidth, int paddleHeight) {
-    //     // Vérifier collision avec le paddle
-    //     if (x + radius >= paddleX && x - radius <= paddleX + paddleWidth) {
-    //         if (Math.abs(y - paddleY) <= radius + paddleHeight / 2) {
-    //             // Calculer où la balle a touché le paddle (gauche = -1, centre = 0, droite = 1)
-    //             double hitPos = (x - (paddleX + paddleWidth / 2.0)) / (paddleWidth / 2.0);
-                
-    //             // Ajuster l'angle selon où la balle touche
-    //             speedX = hitPos * 5; // Plus on touche sur les côtés, plus l'angle est prononcé
-    //             speedY = -speedY;    // Inverser direction verticale
-                
-    //             // Repositionner pour éviter bug de collision multiple
-    //             if (speedY > 0) {
-    //                 y = paddleY + paddleHeight / 2 + radius;
-    //             } else {
-    //                 y = paddleY - paddleHeight / 2 - radius;
-    //             }
-    //         }
-    //     }
-    // }
-    
     // === VÉRIFIER SI SORTIE ===
     public boolean isOutTop() {
         return y - radius < minY;
@@ -155,16 +133,19 @@ public class Ball {
     public boolean hasSuperPower() { return hasSuperPower; }
     public int getSuperPowerDamage() { return superPowerDamage; }
     
+    // maka super pouvoir (alea)
     public void activateSuperPower(int damage) {
         this.hasSuperPower = true;
         this.superPowerDamage = damage;
     }
     
+    // mi-eteindre super pouvoir (alea)
     public void deactivateSuperPower() {
         this.hasSuperPower = false;
         this.superPowerDamage = 0;
     }
     
+    // mi-reduire an'ilay super pouvoir (alea)
     public void reduceSuperPowerDamage(int amount) {
         this.superPowerDamage -= amount;
         if (this.superPowerDamage <= 0) {

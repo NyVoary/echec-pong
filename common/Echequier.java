@@ -148,14 +148,15 @@ public class Echequier {
     }
 
     /**
-     * Fait rebondir la balle si elle touche une case contenant une pièce vivante.
+     * Fait rebondir la balle si elle touche une case contenant une piece vivante.
      * Retourne true si collision, false sinon.
      * Si la balle a un super pouvoir, elle peut tuer plusieurs pièces et ne rebondit pas.
+     * alea
      */
     public boolean bounceBallOnPiece(Ball ball) {
         boolean collision = false;
         
-        // Si la balle a un super pouvoir, elle traverse les pièces
+        // raha manana super pouvoir ny balle dia mi-traverse an'le piece
         if (ball.hasSuperPower()) {
             for (int row = 0; row < ROWS; row++) {
                 for (int col = 0; col < cols; col++) {
@@ -175,18 +176,18 @@ public class Echequier {
                         int pieceHP = piece.getCurrentHP();
                         int damage = ball.getSuperPowerDamage();
                         
-                        // Calculer les dégâts réels infligés (min entre pouvoir et HP du pion)
+                        // mi-calcul ny degat reel ingliger(min entre pouvoir et HP du pion)
                         int actualDamage = Math.min(damage, pieceHP);
                         
                         // La balle inflige ses dégâts de super pouvoir
                         piece.takeDamage(damage);
                         
-                        // Réduit le pouvoir de la balle des dégâts réellement infligés
+                        // manena ny pouvoir an'ilay ball @ fonction reduceSuperPowerDamage
                         ball.reduceSuperPowerDamage(actualDamage);
                         
                         collision = true;
                         
-                        // Si le pouvoir est épuisé, arrêter
+                        // hajanona raha lany ny pouvoir
                         if (!ball.hasSuperPower()) {
                             break;
                         }
@@ -198,7 +199,7 @@ public class Echequier {
             return collision;
         }
         
-        // Mode normal : rebond et 1 dégât
+        // Mode normal : rebond et 1 degat
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < cols; col++) {
                 Carre carre = cases[row][col];
