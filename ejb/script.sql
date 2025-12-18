@@ -31,7 +31,8 @@ INSERT INTO game_config VALUES
 ('BOARD_X', '0'),
 ('TOP_BOARD_Y', '145'),
 ('BOTTOM_BOARD_Y', '505'),
-('CELL_SIZE', '60');
+('CELL_SIZE', '60'),
+('PROGRESS_BAR_CAPACITY', '10');
 
 -- Table des points de vie des pièces
 CREATE TABLE piece_hp (

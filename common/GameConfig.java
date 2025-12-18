@@ -1,8 +1,5 @@
 package common;
 
-import java.io.*;
-import java.util.*;
-
 public class GameConfig {
     public static int NORMAL_SPEED;
     public static int BOOST_SPEED;
@@ -26,4 +23,5 @@ public class GameConfig {
     public static int TOP_BOARD_Y;
     public static int BOTTOM_BOARD_Y;
     public static int CELL_SIZE;
+    public static int PROGRESS_BAR_CAPACITY; // Capacité configurable de la barre de progression
 }

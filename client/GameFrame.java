@@ -1,5 +1,4 @@
 package client;
-import java.awt.AWTEvent;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -9,8 +8,6 @@ import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.Toolkit;
-import java.awt.event.AWTEventListener;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -33,6 +30,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 import common.ChessPiece;
 import common.Echequier;
@@ -65,20 +63,25 @@ public class GameFrame extends JFrame {
     private JTextField ipField;
     private JTextField portField;
     private JTextField colsField;
+    private JTextField progressCapacityField; // Champ pour config barre
     private JButton connectButton;
     private JButton updateColsButton;
     private JButton vieConfigButton; // Ajoute ce bouton
+    private JButton updateProgressButton; // Bouton pour config barre
     private boolean connected = false;
 
     private int ballX;
     private int ballY;
     
-    // Suivre l'état des touches pour éviter les répétitions
-    private boolean leftKeyPressed = false;
-    private boolean rightKeyPressed = false;
-    private boolean sKeyPressed = false;
-    private boolean dKeyPressed = false;
-    private AWTEventListener globalKeyListener;
+    // Barre de progression
+    private int progressBarCurrent = 0;
+    private int progressBarCapacity = 10;
+    private boolean ballHasSuperPower = false;
+    private int ballSuperPowerDamage = 0;
+    
+    // Timer pour maintenir le focus quand la souris est sur la fenêtre
+    private boolean mouseInWindow = false;
+    private Timer focusTimer;
 
     public GameFrame() {
         setTitle("Échec Pong - Client");
@@ -118,9 +121,12 @@ public class GameFrame extends JFrame {
         ipField = new JTextField("localhost", 15);
         portField = new JTextField("5555", 5);
         colsField = new JTextField("8", 5);
+        progressCapacityField = new JTextField("10", 5); // Champ pour barre
         connectButton = new JButton("Se connecter");
         updateColsButton = new JButton("Mettre a jour");
         vieConfigButton = new JButton("Configurer les vies");
+        updateProgressButton = new JButton("MAJ Barre");
+        
         vieConfigButton.setBounds(400, 25, 180, 25);
         gamePanel.add(vieConfigButton);
 
@@ -130,6 +136,10 @@ public class GameFrame extends JFrame {
 
         colsField.setBounds(220, 30, 110, 28);
         updateColsButton.setBounds(220, 65, 170, 32);
+        
+        // Position du champ et bouton barre de progression
+        progressCapacityField.setBounds(220, 105, 110, 28);
+        updateProgressButton.setBounds(340, 105, 110, 28);
 
         gamePanel.setLayout(null);
         gamePanel.add(ipField);
@@ -138,21 +148,49 @@ public class GameFrame extends JFrame {
         gamePanel.add(colsField);
         gamePanel.add(updateColsButton);
         gamePanel.add(vieConfigButton);
+        gamePanel.add(progressCapacityField);
+        gamePanel.add(updateProgressButton);
 
         connectButton.addActionListener(e -> connectToServer());
         updateColsButton.addActionListener(e -> updateColumns());
         vieConfigButton.addActionListener(e -> openVieConfigDialog());
+        updateProgressButton.addActionListener(e -> updateProgressCapacity());
 
         ActionListener connectAction = e -> connectToServer();
         ipField.addActionListener(connectAction);
         portField.addActionListener(connectAction);
 
         colsField.addActionListener(e -> updateColumns());
+        progressCapacityField.addActionListener(e -> updateProgressCapacity());
     }
 
     private void openVieConfigDialog() {
         VieConfigDialog dialog = new VieConfigDialog(this);
         dialog.setVisible(true);
+    }
+    
+    private void updateProgressCapacity() {
+        String capacityText = progressCapacityField.getText().trim();
+        try {
+            int capacity = Integer.parseInt(capacityText);
+            if (capacity < 1) {
+                JOptionPane.showMessageDialog(this, "La capacité doit être au moins 1 !");
+                requestFocus();
+                return;
+            }
+
+            progressBarCapacity = capacity;
+
+            if (connected && out != null) {
+                out.println("PROGRESS_CAPACITY:" + capacity);
+            }
+
+            gamePanel.repaint();
+            requestFocus();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Veuillez entrer un nombre valide !");
+            requestFocus();
+        }
     }
 
     // ✨ Centre les raquettes et la balle dans le panel de jeu
@@ -214,6 +252,7 @@ public class GameFrame extends JFrame {
         System.out.println("Panel redimensionné : " + boardWidth + "x" + GameConfig.WINDOW_HEIGHT);
     }
 
+    // miconnecte @ serveur
     private void connectToServer() {
         if (connected) {
             JOptionPane.showMessageDialog(this, "Déjà connecté !");
@@ -270,68 +309,72 @@ public class GameFrame extends JFrame {
         }
     }
 
+    // gestion des bouttons clavier
 private void setupKeyListeners() {
-    // Écouteur global qui capture TOUTES les touches du système
-    // Fonctionne même si la fenêtre n'a pas le focus
-    globalKeyListener = new AWTEventListener() {
+    // Listener classique pour les touches
+    addKeyListener(new KeyAdapter() {
         @Override
-        public void eventDispatched(AWTEvent event) {
+        public void keyPressed(KeyEvent e) {
             if (!connected || mySide == null || out == null) return;
-            
-            if (event instanceof KeyEvent) {
-                KeyEvent ke = (KeyEvent) event;
-                
-                if (ke.getID() == KeyEvent.KEY_PRESSED) {
-                    // Joueur 1 (LEFT/BOTTOM) : touches fléchées
-                    if (mySide.equals("LEFT")) {
-                        if (ke.getKeyCode() == KeyEvent.VK_LEFT && !leftKeyPressed) {
-                            out.println("MOVE:LEFT");
-                            leftKeyPressed = true;
-                        } else if (ke.getKeyCode() == KeyEvent.VK_RIGHT && !rightKeyPressed) {
-                            out.println("MOVE:RIGHT");
-                            rightKeyPressed = true;
-                        }
-                    }
-                    // Joueur 2 (RIGHT/TOP) : touches S et D
-                    else if (mySide.equals("RIGHT")) {
-                        if (ke.getKeyCode() == KeyEvent.VK_S && !sKeyPressed) {
-                            out.println("MOVE:LEFT");
-                            sKeyPressed = true;
-                        } else if (ke.getKeyCode() == KeyEvent.VK_D && !dKeyPressed) {
-                            out.println("MOVE:RIGHT");
-                            dKeyPressed = true;
-                        }
-                    }
-                } else if (ke.getID() == KeyEvent.KEY_RELEASED) {
-                    // Réinitialiser l'état des touches au relâchement
-                    if (ke.getKeyCode() == KeyEvent.VK_LEFT) leftKeyPressed = false;
-                    if (ke.getKeyCode() == KeyEvent.VK_RIGHT) rightKeyPressed = false;
-                    if (ke.getKeyCode() == KeyEvent.VK_S) sKeyPressed = false;
-                    if (ke.getKeyCode() == KeyEvent.VK_D) dKeyPressed = false;
+
+            if (mySide.equals("LEFT")) {
+                // Joueur 1 (BOTTOM) : touches fléchées
+                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                    out.println("MOVE:LEFT");
+                } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                    out.println("MOVE:RIGHT");
+                }
+            } else if (mySide.equals("RIGHT")) {
+                // Joueur 2 (TOP) : touches S et D
+                if (e.getKeyCode() == KeyEvent.VK_S) {
+                    out.println("MOVE:LEFT");
+                } else if (e.getKeyCode() == KeyEvent.VK_D) {
+                    out.println("MOVE:RIGHT");
                 }
             }
         }
-    };
-    
-    // Enregistrer l'écouteur pour capturer TOUS les événements clavier
-    Toolkit.getDefaultToolkit().addAWTEventListener(
-        globalKeyListener,
-        AWTEvent.KEY_EVENT_MASK
-    );
-    
-    // Nettoyer l'écouteur quand la fenêtre se ferme
-    addWindowListener(new java.awt.event.WindowAdapter() {
-        @Override
-        public void windowClosing(java.awt.event.WindowEvent e) {
-            if (globalKeyListener != null) {
-                Toolkit.getDefaultToolkit().removeAWTEventListener(globalKeyListener);
-            }
-        }
     });
+    setFocusable(true);
 }
 
 private void setupFocusManagement() {
-    // Repaint pour mettre à jour l'indicateur visuel uniquement
+    // Détection de la souris dans la fenêtre
+    addMouseListener(new java.awt.event.MouseAdapter() {
+        @Override
+        public void mouseEntered(java.awt.event.MouseEvent e) {
+            mouseInWindow = true;
+            requestFocusInWindow();
+        }
+        
+        @Override
+        public void mouseExited(java.awt.event.MouseEvent e) {
+            mouseInWindow = false;
+        }
+    });
+    
+    // Idem pour le panel de jeu
+    gamePanel.addMouseListener(new java.awt.event.MouseAdapter() {
+        @Override
+        public void mouseEntered(java.awt.event.MouseEvent e) {
+            mouseInWindow = true;
+            requestFocusInWindow();
+        }
+        
+        @Override
+        public void mouseExited(java.awt.event.MouseEvent e) {
+            mouseInWindow = false;
+        }
+    });
+    
+    // Timer qui maintient le focus quand la souris est dans la fenêtre
+    focusTimer = new Timer(100, e -> {
+        if (mouseInWindow && !hasFocus()) {
+            requestFocusInWindow();
+        }
+    });
+    focusTimer.start();
+    
+    // Repaint pour l'indicateur visuel
     addFocusListener(new java.awt.event.FocusAdapter() {
         @Override
         public void focusGained(java.awt.event.FocusEvent e) {
@@ -341,6 +384,16 @@ private void setupFocusManagement() {
         @Override
         public void focusLost(java.awt.event.FocusEvent e) {
             gamePanel.repaint();
+        }
+    });
+    
+    // Arrêter le timer à la fermeture
+    addWindowListener(new java.awt.event.WindowAdapter() {
+        @Override
+        public void windowClosing(java.awt.event.WindowEvent e) {
+            if (focusTimer != null) {
+                focusTimer.stop();
+            }
         }
     });
 }
@@ -404,6 +457,7 @@ private void setupFocusManagement() {
         gamePanel.repaint();
     }
 
+    // gestion des messages serveur
     private void processServerMessage(String message) {
         if (message.startsWith("CONFIG:")) {
             // 1. Appliquer la config reçue
@@ -435,6 +489,11 @@ private void setupFocusManagement() {
                             case "TOP_BOARD_Y": GameConfig.TOP_BOARD_Y = Integer.parseInt(value); break;
                             case "BOTTOM_BOARD_Y": GameConfig.BOTTOM_BOARD_Y = Integer.parseInt(value); break;
                             case "CELL_SIZE": GameConfig.CELL_SIZE = Integer.parseInt(value); break;
+                            case "PROGRESS_BAR_CAPACITY": 
+                                GameConfig.PROGRESS_BAR_CAPACITY = Integer.parseInt(value);
+                                progressBarCapacity = Integer.parseInt(value);
+                                progressCapacityField.setText(value);
+                                break;
                         }
                     } catch (Exception ignored) {}
                 }
@@ -445,19 +504,33 @@ private void setupFocusManagement() {
         }
 
         if (message.startsWith("STATE:")) {
-            String[] mainParts = message.split(";PIECES:");
-            String[] parts = mainParts[0].substring(6).split(",");
-            topPaddle.setX(Integer.parseInt(parts[0]));
-            bottomPaddle.setX(Integer.parseInt(parts[1]));
-            if (parts.length >= 4) {
-                ballX = Integer.parseInt(parts[2]);
-                ballY = Integer.parseInt(parts[3]);
+            String[] mainParts = message.split(";");
+            
+            // Parse STATE
+            if (mainParts[0].startsWith("STATE:")) {
+                String[] parts = mainParts[0].substring(6).split(",");
+                topPaddle.setX(Integer.parseInt(parts[0]));
+                bottomPaddle.setX(Integer.parseInt(parts[1]));
+                if (parts.length >= 4) {
+                    ballX = Integer.parseInt(parts[2]);
+                    ballY = Integer.parseInt(parts[3]);
+                }
             }
-
-            if (mainParts.length > 1) {
-                String[] piecesData = mainParts[1].split("\\|");
-                int cols = topBoard.getCols();
-                int perBoard = 2 * cols;
+            
+            // Parse PROGRESS
+            for (String part : mainParts) {
+                if (part.startsWith("PROGRESS:")) {
+                    String[] progressParts = part.substring(9).split(",");
+                    if (progressParts.length >= 4) {
+                        progressBarCurrent = Integer.parseInt(progressParts[0]);
+                        progressBarCapacity = Integer.parseInt(progressParts[1]);
+                        ballHasSuperPower = "1".equals(progressParts[2]);
+                        ballSuperPowerDamage = Integer.parseInt(progressParts[3]);
+                    }
+                } else if (part.startsWith("PIECES:")) {
+                    String[] piecesData = part.substring(7).split("\\|");
+                    int cols = topBoard.getCols();
+                    int perBoard = 2 * cols;
 
                 // Synchronise sur les deux boards pendant toute la reconstruction
                 synchronized (topBoard.getPieces()) {
@@ -489,6 +562,7 @@ private void setupFocusManagement() {
                         }
                     }
                 }
+                }
             }
             gamePanel.repaint();
         } else if (message.startsWith("COLS:")) {
@@ -497,6 +571,11 @@ private void setupFocusManagement() {
             bottomBoard.setCols(cols);
             colsField.setText(String.valueOf(cols));
             SwingUtilities.invokeLater(() -> resizeWindow(cols));
+            gamePanel.repaint();
+        } else if (message.startsWith("PROGRESS_CAPACITY:")) {
+            int capacity = Integer.parseInt(message.substring("PROGRESS_CAPACITY:".length()));
+            progressBarCapacity = capacity;
+            progressCapacityField.setText(String.valueOf(capacity));
             gamePanel.repaint();
         }
         else if (message.startsWith("GAMEOVER:WINNER:")) {
@@ -537,6 +616,7 @@ private void setupFocusManagement() {
             return new Dimension(dynamicWidth, GameConfig.WINDOW_HEIGHT);
         }
 
+        // peinture
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -560,12 +640,18 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
             if (connected) {
                 g.setColor(new Color(0, 255, 100));
                 g.setFont(new Font("Arial", Font.BOLD, 13));
-                g.drawString("Connecte - Vous etes: " +
-                    (mySide != null && mySide.equals("LEFT") ? "BOTTOM (J1) - Fleches" : "TOP (J2) - S/D"),
-                    200, 50);
-                g.setColor(new Color(255, 255, 100));
-                g.setFont(new Font("Arial", Font.BOLD, 11));
-                g.drawString("✓ Touches actives en permanence !", 200, 70);
+                String playerInfo = (mySide != null && mySide.equals("LEFT") ? "BOTTOM (J1) - Fleches ←→" : "TOP (J2) - S/D");
+                g.drawString("Connecte - " + playerInfo, 200, 50);
+                
+                if (hasFocus()) {
+                    g.setColor(new Color(255, 255, 100));
+                    g.setFont(new Font("Arial", Font.BOLD, 11));
+                    g.drawString("✓ Touches actives", 200, 70);
+                } else {
+                    g.setColor(new Color(255, 200, 100));
+                    g.setFont(new Font("Arial", Font.ITALIC, 11));
+                    g.drawString("Survolez la fenetre pour jouer", 200, 70);
+                }
             } else {
                 g.setColor(new Color(255, 100, 100));
                 g.setFont(new Font("Arial", Font.BOLD, 13));
@@ -575,6 +661,7 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
             g.setColor(Color.WHITE);
             g.setFont(new Font("Arial", Font.PLAIN, 11));
             g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
+            g.drawString("Capacité barre de progression", 10, 130);
 
             // Indicateur visuel simplifié (optionnel - juste pour montrer quelle fenêtre est au premier plan)
             if (connected && GameFrame.this.hasFocus()) {
@@ -583,6 +670,55 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
                 g2d.setStroke(new BasicStroke(3));
                 g2d.drawRect(2, 142, getWidth() - 4, getHeight() - 144);
             }
+            
+            // === BARRE DE PROGRESSION ===
+            // Dessiner la barre de progression au-dessus des échiquiers
+            int barWidth = 300;
+            int barHeight = 25;
+            int barX = (getWidth() - barWidth) / 2;
+            int barY = topBoardY + (2 * cellSize) + 60; // Juste au-dessus du jeu
+            
+            // Fond de la barre
+            g.setColor(new Color(60, 60, 80));
+            g.fillRect(barX, barY, barWidth, barHeight);
+            
+            // Barre de progression remplie
+            if (progressBarCapacity > 0) {
+                float fillRatio = (float) progressBarCurrent / progressBarCapacity;
+                int fillWidth = (int) (barWidth * fillRatio);
+                
+                // Couleur selon l'état
+                if (ballHasSuperPower) {
+                    // Super pouvoir actif - rouge flamboyant
+                    g.setColor(new Color(255, 50, 50));
+                } else if (progressBarCurrent >= progressBarCapacity) {
+                    // Pleine - vert éclatant
+                    g.setColor(new Color(0, 255, 100));
+                } else {
+                    // En cours - jaune doré
+                    g.setColor(new Color(255, 215, 0));
+                }
+                g.fillRect(barX, barY, fillWidth, barHeight);
+            }
+            
+            // Bordure
+            g.setColor(Color.WHITE);
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawRect(barX, barY, barWidth, barHeight);
+            
+            // Texte sur la barre
+            g.setFont(new Font("Arial", Font.BOLD, 14));
+            String barText;
+            if (ballHasSuperPower) {
+                barText = "⚡ SUPER POUVOIR! Dégâts: " + ballSuperPowerDamage + " ⚡";
+                g.setColor(new Color(255, 255, 100));
+            } else {
+                barText = progressBarCurrent + " / " + progressBarCapacity;
+                g.setColor(Color.WHITE);
+            }
+            int textWidth = g.getFontMetrics().stringWidth(barText);
+            g.drawString(barText, barX + (barWidth - textWidth) / 2, barY + 17);
 
             // Dessiner les échiquiers
             topBoard.draw(g);
@@ -598,18 +734,40 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
             g.setColor(new Color(255, 100, 50)); // Orange vif
             g.fillRect(bottomPaddle.getX(), paddleBottomY, bottomPaddle.getWidth(), bottomPaddle.getHeight());
 
-            // Dessiner la balle - jaune vif
-            g.setColor(new Color(255, 230, 0));
-            g.fillOval(ballX - GameConfig.BALL_RADIUS,
-                       ballY - GameConfig.BALL_RADIUS,
-                       GameConfig.BALL_RADIUS * 2,
-                       GameConfig.BALL_RADIUS * 2);
+            // Dessiner la balle - couleur selon le super pouvoir
+            if (ballHasSuperPower) {
+                // Balle en mode super pouvoir - rouge flamboyant avec aura
+                g.setColor(new Color(255, 100, 100, 100)); // Aura rouge transparente
+                g.fillOval(ballX - GameConfig.BALL_RADIUS - 5,
+                           ballY - GameConfig.BALL_RADIUS - 5,
+                           (GameConfig.BALL_RADIUS + 5) * 2,
+                           (GameConfig.BALL_RADIUS + 5) * 2);
+                
+                g.setColor(new Color(255, 50, 50)); // Rouge vif
+                g.fillOval(ballX - GameConfig.BALL_RADIUS,
+                           ballY - GameConfig.BALL_RADIUS,
+                           GameConfig.BALL_RADIUS * 2,
+                           GameConfig.BALL_RADIUS * 2);
+                
+                g.setColor(new Color(255, 150, 150));
+                g.drawOval(ballX - GameConfig.BALL_RADIUS,
+                           ballY - GameConfig.BALL_RADIUS,
+                           GameConfig.BALL_RADIUS * 2,
+                           GameConfig.BALL_RADIUS * 2);
+            } else {
+                // Balle normale - jaune vif
+                g.setColor(new Color(255, 230, 0));
+                g.fillOval(ballX - GameConfig.BALL_RADIUS,
+                           ballY - GameConfig.BALL_RADIUS,
+                           GameConfig.BALL_RADIUS * 2,
+                           GameConfig.BALL_RADIUS * 2);
 
-            g.setColor(new Color(200, 180, 0));
-            g.drawOval(ballX - GameConfig.BALL_RADIUS,
-                       ballY - GameConfig.BALL_RADIUS,
-                       GameConfig.BALL_RADIUS * 2,
-                       GameConfig.BALL_RADIUS * 2);
+                g.setColor(new Color(200, 180, 0));
+                g.drawOval(ballX - GameConfig.BALL_RADIUS,
+                           ballY - GameConfig.BALL_RADIUS,
+                           GameConfig.BALL_RADIUS * 2,
+                           GameConfig.BALL_RADIUS * 2);
+            }
         }
     }
 
