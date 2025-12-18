@@ -95,27 +95,22 @@ private Timer localKeyTimer;
         String host = "localhost";
         int port = Integer.parseInt(portField.getText().trim());
 
-        // Connexion pour le joueur LEFT (flèches)
-        socketLeft = new Socket(host, port);
-        outLeft = new PrintWriter(socketLeft.getOutputStream(), true);
-        inLeft = new BufferedReader(new InputStreamReader(socketLeft.getInputStream()));
-        String sideMsgLeft = inLeft.readLine();
-        if (!sideMsgLeft.startsWith("SIDE:")) throw new IOException("Serveur plein ou erreur");
-        String sideLeft = sideMsgLeft.substring(5);
+        socket = new Socket(host, port);
+        out = new PrintWriter(socket.getOutputStream(), true);
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-        // Connexion pour le joueur RIGHT (S/D)
-        socketRight = new Socket(host, port);
-        outRight = new PrintWriter(socketRight.getOutputStream(), true);
-        inRight = new BufferedReader(new InputStreamReader(socketRight.getInputStream()));
-        String sideMsgRight = inRight.readLine();
-        if (!sideMsgRight.startsWith("SIDE:")) throw new IOException("Serveur plein ou erreur");
-        String sideRight = sideMsgRight.substring(5);
+        String sideMsg = in.readLine();
+        if (!sideMsg.startsWith("SIDE:")) throw new IOException("Serveur plein ou erreur");
+        mySide = sideMsg.substring(5); // Peut-être "LEFT" ou "RIGHT", mais on s'en fiche ici
 
-        // Démarre un seul thread de réception (les deux sockets reçoivent le même état)
+        // === AJOUT ICI ===
+        out.println("LOCAL_MODE");
+
+        // Thread de réception unique
         new Thread(() -> {
             try {
                 String message;
-                while ((message = inLeft.readLine()) != null) {
+                while ((message = in.readLine()) != null) {
                     processServerMessage(message);
                 }
             } catch (IOException e) {
@@ -124,24 +119,6 @@ private Timer localKeyTimer;
                 });
             }
         }).start();
-
-        // Ajoute un thread pour écouter inRight aussi
-        new Thread(() -> {
-            try {
-                String message;
-                while ((message = inRight.readLine()) != null) {
-                    processServerMessage(message);
-                }
-            } catch (IOException e) {
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, "Connexion perdue avec le serveur (RIGHT)");
-                });
-            }
-        }).start();
-
-        // Envoie la config de colonnes sur les deux sockets
-        outLeft.println("COLS:" + topBoard.getCols());
-        outRight.println("COLS:" + topBoard.getCols());
 
         connected = true;
         connectButton.setEnabled(false);
@@ -351,17 +328,17 @@ private void setupKeyListeners() {
         if (localMode) {
             // Joueur 1 (flèches) → LEFT
             if (pressedKeys.contains(KeyEvent.VK_LEFT)) {
-                if (outLeft != null) outLeft.println("MOVE:LEFT");
+                if (out != null) out.println("MOVE:LEFT:LEFT"); // MOVE:<side>:<direction>
             }
             if (pressedKeys.contains(KeyEvent.VK_RIGHT)) {
-                if (outLeft != null) outLeft.println("MOVE:RIGHT");
+                if (out != null) out.println("MOVE:LEFT:RIGHT");
             }
             // Joueur 2 (S/D) → RIGHT
             if (pressedKeys.contains(KeyEvent.VK_S)) {
-                if (outRight != null) outRight.println("MOVE:LEFT");
+                if (out != null) out.println("MOVE:RIGHT:LEFT");
             }
             if (pressedKeys.contains(KeyEvent.VK_D)) {
-                if (outRight != null) outRight.println("MOVE:RIGHT");
+                if (out != null) out.println("MOVE:RIGHT:RIGHT");
             }
         } else {
             if (!connected || mySide == null) return;
