@@ -1,0 +1,13 @@
+embed-server --std-out=echo
+/subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql,driver-module-name=org.postgresql)
+data-source add \
+    --name=echecpongDS \
+    --jndi-name=java:/jdbc/echecpongDS \
+    --driver-name=postgresql \
+    --connection-url=jdbc:postgresql://db:5432/echecpong \
+    --user-name=postgres \
+    --password=postgres \
+    --use-ccm=false \
+    --max-pool-size=20 \
+    --blocking-timeout-wait-millis=5000
+quit

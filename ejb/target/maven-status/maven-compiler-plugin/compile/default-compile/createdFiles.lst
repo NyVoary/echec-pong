@@ -1,2 +1,4 @@
 configservice\ConfigServiceRemote.class
 configservice\ConfigServiceBean.class
+configservice\RestApplication.class
+configservice\ConfigServiceRest.class
