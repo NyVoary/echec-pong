@@ -84,9 +84,28 @@ public class ClientHandler extends Thread {
     }
 
     private void processCommand(String command) {
+        if (command.equals("LOCAL_MODE")) {
+            gameEngine.setLocalMode(true);
+            System.out.println("Mode local activé côté serveur !");
+            // Si déjà un joueur, démarre la partie
+            synchronized (gameEngine) {
+                if (gameEngine.players.size() == 1 && !gameEngine.isGameRunning()) {
+                    gameEngine.startGame();
+                }
+            }
+            return;
+        }
         if (command.startsWith("MOVE:")) {
-            String direction = command.substring(5);
-            gameEngine.movePaddle(playerSide, direction);
+            String[] parts = command.split(":");
+            if (parts.length == 3) {
+                String side = parts[1];      // "LEFT" ou "RIGHT"
+                String direction = parts[2]; // "LEFT" ou "RIGHT"
+                gameEngine.movePaddle(side, direction);
+            } else if (parts.length == 2) {
+                // Ancien format : MOVE:LEFT (utilise playerSide)
+                String direction = parts[1];
+                gameEngine.movePaddle(playerSide, direction);
+            }
         } else if (command.startsWith("COLS:")) {
             int cols = Integer.parseInt(command.substring(5));
             System.out.println("📊 Mise à jour colonnes: " + cols);

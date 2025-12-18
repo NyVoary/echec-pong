@@ -26,6 +26,9 @@ public class GameEngine {
     private boolean gameRunning = false;
     private Thread gameLoopThread;
 
+    private boolean localMode = false; // Ajouté
+
+
     public GameEngine() {
         // Charger la config et les HP depuis l'EJB
         loadConfigFromEJB();
@@ -70,6 +73,17 @@ public class GameEngine {
         topBoard.initializeDefaultPieces(false, topPlayer);
         bottomBoard.initializeDefaultPieces(true, bottomPlayer);
     }
+
+    public void setLocalMode(boolean localMode) {
+        this.localMode = localMode;
+    }
+    public boolean isLocalMode() {
+        return localMode;
+    }
+
+    public boolean isGameRunning() {
+    return gameRunning;
+}
 
     public void loadConfigFromEJB() { //alea 1
         try {
@@ -148,22 +162,22 @@ public class GameEngine {
     }
 
     // === GESTION DES JOUEURS ===
-    public synchronized void addPlayer(String side, ClientHandler handler) {
-        String id = "PLAYER_" + side + "_" + System.currentTimeMillis();
-        Player player = new Player(id, side, handler);
-        players.put(side, player);
-        if (side.equals("LEFT")) {
-            topPlayer = player;
-        } else if (side.equals("RIGHT")) {
-            bottomPlayer = player;
-        }
-        System.out.println("✓ Joueur ajouté: " + player);
-        
-        // Démarrer la partie si 2 joueurs
-        if (players.size() == 2 && !gameRunning) {
-            startGame();
-        }
+public synchronized void addPlayer(String side, ClientHandler handler) {
+    String id = "PLAYER_" + side + "_" + System.currentTimeMillis();
+    Player player = new Player(id, side, handler);
+    players.put(side, player);
+    if (side.equals("LEFT")) {
+        topPlayer = player;
+    } else if (side.equals("RIGHT")) {
+        bottomPlayer = player;
     }
+    System.out.println("✓ Joueur ajouté: " + player);
+
+    // Démarrer la partie si 2 joueurs OU mode local
+    if ((players.size() == 2 || (players.size() == 1 && localMode)) && !gameRunning) {
+        startGame();
+    }
+}
 
     public Player getPlayer(String side) {
         if (side.equals("LEFT")) return topPlayer;
