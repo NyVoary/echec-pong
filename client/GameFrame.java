@@ -83,6 +83,7 @@ public class GameFrame extends JFrame {
 
         setupConnectionForm();
         setupKeyListeners();
+        setupFocusManagement();
 
         // Initialisation temporaire (sera écrasée après réception de la config)
         boardX = 0;
@@ -281,6 +282,40 @@ private void setupKeyListeners() {
         }
     });
     setFocusable(true);
+    requestFocusInWindow();
+}
+
+private void setupFocusManagement() {
+    // Récupère le focus automatiquement quand la souris entre dans la fenêtre
+    addMouseListener(new java.awt.event.MouseAdapter() {
+        @Override
+        public void mouseEntered(java.awt.event.MouseEvent e) {
+            requestFocusInWindow();
+            gamePanel.repaint();
+        }
+    });
+    
+    // Même chose pour le panel de jeu
+    gamePanel.addMouseListener(new java.awt.event.MouseAdapter() {
+        @Override
+        public void mouseEntered(java.awt.event.MouseEvent e) {
+            requestFocusInWindow();
+            gamePanel.repaint();
+        }
+    });
+    
+    // Repaint quand le focus change pour afficher l'indicateur
+    addFocusListener(new java.awt.event.FocusAdapter() {
+        @Override
+        public void focusGained(java.awt.event.FocusEvent e) {
+            gamePanel.repaint();
+        }
+        
+        @Override
+        public void focusLost(java.awt.event.FocusEvent e) {
+            gamePanel.repaint();
+        }
+    });
 }
 
     private void startReceivingThread() {
@@ -513,6 +548,28 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
             g.setColor(Color.WHITE);
             g.setFont(new Font("Arial", Font.PLAIN, 11));
             g.drawString("Nombre de colonnes (pair, max 8)", 10, 110);
+
+            // Indicateur de focus (bordure verte si fenêtre active)
+            if (GameFrame.this.hasFocus()) {
+                g.setColor(new Color(0, 255, 100));
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setStroke(new BasicStroke(4));
+                g2d.drawRect(2, 142, getWidth() - 4, getHeight() - 144);
+                
+                // Message "ACTIF"
+                g.setFont(new Font("Arial", Font.BOLD, 14));
+                g.drawString("⚡ FENETRE ACTIVE", getWidth() - 170, 130);
+            } else {
+                g.setColor(new Color(150, 150, 150, 100));
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawRect(2, 142, getWidth() - 4, getHeight() - 144);
+                
+                // Message "Survolez la fenêtre"
+                g.setColor(new Color(200, 200, 200));
+                g.setFont(new Font("Arial", Font.ITALIC, 11));
+                g.drawString("(Survolez pour activer)", getWidth() - 180, 130);
+            }
 
             // Dessiner les échiquiers
             topBoard.draw(g);
