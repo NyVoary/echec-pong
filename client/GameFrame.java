@@ -456,6 +456,8 @@ private void setupKeyListeners() {
                             case "TOP_BOARD_Y": GameConfig.TOP_BOARD_Y = Integer.parseInt(value); break;
                             case "BOTTOM_BOARD_Y": GameConfig.BOTTOM_BOARD_Y = Integer.parseInt(value); break;
                             case "CELL_SIZE": GameConfig.CELL_SIZE = Integer.parseInt(value); break;
+                            case "SUPER_SHOT_DAMAGE": superShotDamage = Integer.parseInt(value); break;
+                            case "PROGRESS_BAR_MAX": progressBarMax = Integer.parseInt(value); break;
                         }
                     } catch (Exception ignored) {}
                 }
