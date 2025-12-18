@@ -46,3 +46,7 @@ INSERT INTO piece_hp VALUES
 ('BISHOP', 5),
 ('QUEEN', 5),
 ('KING', 5);
+
+INSERT INTO game_config VALUES
+('PROGRESS_BAR_MAX', '10'),
+('SUPER_SHOT_DAMAGE', '3');

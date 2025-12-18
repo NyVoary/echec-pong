@@ -27,6 +27,12 @@ public class GameEngine {
     private Thread gameLoopThread;
 
     private boolean localMode = false; // Ajouté
+    private int progressBar = 0;
+    private int progressBarMax = 10;
+    private int superShotDamage = 3;
+    private boolean superShotActive = false;
+    private int superShotLeft = 0;
+
 
 
     public GameEngine() {
@@ -74,6 +80,24 @@ public class GameEngine {
         bottomBoard.initializeDefaultPieces(true, bottomPlayer);
     }
 
+    public void setGameConfigInEJB(String key, String value) {
+    try {
+        Properties props = new Properties();
+        props.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
+        props.put(Context.PROVIDER_URL, "http-remoting://localhost:8080");
+        Context ctx = new InitialContext(props);
+
+        ConfigServiceRemote configService = (ConfigServiceRemote) ctx.lookup(
+            "ejb:/configservice//ConfigServiceBean!configservice.ConfigServiceRemote"
+        );
+        // Ajoute cette méthode dans l'EJB :
+        configService.setGameConfig(key, value);
+        System.out.println("Config " + key + " mis à jour à " + value + " en base !");
+    } catch (Exception e) {
+        System.out.println("Erreur setGameConfigInEJB : " + e.getMessage());
+    }
+}
+
     public void setLocalMode(boolean localMode) {
         this.localMode = localMode;
     }
@@ -83,6 +107,25 @@ public class GameEngine {
 
     public boolean isGameRunning() {
     return gameRunning;
+}
+
+    public boolean isSuperShotActive() { return superShotActive; }
+    public int getSuperShotLeft() { return superShotLeft; }
+    public void consumeSuperShot(int dmgDone) {
+        superShotLeft -= dmgDone;
+        if (superShotLeft <= 0) {
+            superShotActive = false;
+            superShotLeft = 0;
+        }
+    }
+
+private void loadSpecialConfig(Map<String, String> config) {
+    if (config.containsKey("PROGRESS_BAR_MAX")) {
+        progressBarMax = Integer.parseInt(config.get("PROGRESS_BAR_MAX"));
+    }
+    if (config.containsKey("SUPER_SHOT_DAMAGE")) {
+        superShotDamage = Integer.parseInt(config.get("SUPER_SHOT_DAMAGE"));
+    }
 }
 
     public void loadConfigFromEJB() { //alea 1
@@ -104,6 +147,7 @@ public class GameEngine {
             for (Map.Entry<String, String> entry : config.entrySet()) {
                 System.out.println(entry.getKey() + " = " + entry.getValue());
             }
+            loadSpecialConfig(config);
             System.out.println("=== HP DES PIECES (depuis EJB) ===");
             for (Map.Entry<String, Integer> entry : hpMap.entrySet()) {
                 System.out.println(entry.getKey() + " = " + entry.getValue());
@@ -243,8 +287,27 @@ public synchronized void addPlayer(String side, ClientHandler handler) {
             ball.bounce(topPaddle.getX(), topPaddle.getY(), topPaddle.getWidth(), topPaddle.getHeight());
             ball.bounce(bottomPaddle.getX(), bottomPaddle.getY(), bottomPaddle.getWidth(), bottomPaddle.getHeight());
 
-            topBoard.bounceBallOnPiece(ball);
-            bottomBoard.bounceBallOnPiece(ball);
+            // topBoard.bounceBallOnPiece(ball,this);
+            // bottomBoard.bounceBallOnPiece(ball,this);
+
+            boolean hitTop = topBoard.bounceBallOnPiece(ball, this);
+            boolean hitBottom = bottomBoard.bounceBallOnPiece(ball, this);
+
+            if ((hitTop || hitBottom) && !superShotActive) {
+                progressBar++;
+                if (progressBar >= progressBarMax) {
+                    progressBar = 0;
+                    superShotActive = true;
+                    superShotLeft = superShotDamage;
+                }
+            }
+
+            // Si la balle sort, reset le pouvoir spécial
+            if (ball.isOutTop() || ball.isOutBottom()) {
+                superShotActive = false;
+                superShotLeft = 0;
+                progressBar = 0;
+            }
                 
         // Vérifier si la balle est sortie
         if (ball.isOutTop()) {
@@ -304,7 +367,7 @@ public synchronized void addPlayer(String side, ClientHandler handler) {
         int panelWidth = cols * GameConfig.CELL_SIZE;
         ball.setLimits(0, panelWidth, GameConfig.GAME_AREA_MIN_Y, GameConfig.GAME_AREA_MAX_Y);
 
-        // ...le reste (paddle, boards, etc.)...
+        // ...le reste (paddle, boards, etc.)..
             // Réinitialise les échiquiers avec les bons joueurs
         topBoard.setCols(cols);
         bottomBoard.setCols(cols);
@@ -390,6 +453,11 @@ public String getGameState() {
         sb.append(piece.getCurrentHP()).append(",");
         sb.append(piece.isAlive() ? "1" : "0").append("|");
     }
+
+    // Ajoute la barre de progression et l'état du super tir
+    sb.append(";BAR:").append(progressBar).append("/").append(progressBarMax);
+    sb.append(";SUPER:").append(superShotActive ? "1" : "0").append(",").append(superShotLeft);
+
     return sb.toString();
 }
 }

@@ -36,4 +36,12 @@ public class ConfigServiceBean implements ConfigServiceRemote {
           .setParameter(2, pieceType)
           .executeUpdate();
     }
+
+    @Override
+    public void setGameConfig(String key, String value) {
+        em.createNativeQuery("UPDATE game_config SET value = ? WHERE key = ?")
+        .setParameter(1, value)
+        .setParameter(2, key)
+        .executeUpdate();
+    }
 }

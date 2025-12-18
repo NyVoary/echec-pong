@@ -8,7 +8,7 @@ import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
 import server.Player; // Ajoute cet import
-
+import server.GameEngine;
 public class Echequier {
     private int x, y, cellWidth, cellHeight;
     private int cols;
@@ -147,7 +147,7 @@ public class Echequier {
      * Fait rebondir la balle si elle touche une case contenant une pièce vivante.
      * Retourne true si collision, false sinon.
      */
-    public boolean bounceBallOnPiece(Ball ball) {
+    public boolean bounceBallOnPiece(Ball ball, GameEngine engine) {
         boolean collision = false;
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < cols; col++) {
@@ -167,7 +167,16 @@ public class Echequier {
                     ballY + r >= caseY && ballY - r <= caseY + cellHeight) {
                     ball.bounce(caseX, caseY, cellWidth, cellHeight);
                     ChessPiece piece = carre.getPiece();
-                    piece.takeDamage(1); // Par exemple, 10 PV par rebond
+                    int dmg = 1;
+                    if (engine.isSuperShotActive()) {
+                        dmg = engine.getSuperShotLeft();
+                        int hpBefore = piece.getCurrentHP();
+                        piece.takeDamage(dmg);
+                        int dmgDone = Math.min(dmg, hpBefore);
+                        engine.consumeSuperShot(dmgDone);
+                    } else {
+                        piece.takeDamage(1);
+                    }
                     collision = true;
                 }
             }
