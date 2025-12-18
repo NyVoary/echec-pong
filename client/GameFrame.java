@@ -11,6 +11,7 @@ import common.ChessPiece;
 import common.PieceType;
 import java.util.Properties;
 import java.util.*;
+import javax.swing.Timer;
 
 public class GameFrame extends JFrame {
     private PrintWriter out;
@@ -45,6 +46,16 @@ public class GameFrame extends JFrame {
     private int ballX;
     private int ballY;
 
+
+    private boolean localMode = false;
+    private PrintWriter outLeft, outRight;
+    private BufferedReader inLeft, inRight;
+    private Socket socketLeft, socketRight;
+
+    private Set<Integer> pressedKeys = new HashSet<>();
+private Timer localKeyTimer;
+    
+
     public GameFrame() {
         setTitle("Échec Pong - Client");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -77,6 +88,75 @@ public class GameFrame extends JFrame {
         ballX = 0;
         ballY = 0;
     }
+
+
+    private void connectLocalPlayers() {
+    try {
+        String host = "localhost";
+        int port = Integer.parseInt(portField.getText().trim());
+
+        // Connexion pour le joueur LEFT (flèches)
+        socketLeft = new Socket(host, port);
+        outLeft = new PrintWriter(socketLeft.getOutputStream(), true);
+        inLeft = new BufferedReader(new InputStreamReader(socketLeft.getInputStream()));
+        String sideMsgLeft = inLeft.readLine();
+        if (!sideMsgLeft.startsWith("SIDE:")) throw new IOException("Serveur plein ou erreur");
+        String sideLeft = sideMsgLeft.substring(5);
+
+        // Connexion pour le joueur RIGHT (S/D)
+        socketRight = new Socket(host, port);
+        outRight = new PrintWriter(socketRight.getOutputStream(), true);
+        inRight = new BufferedReader(new InputStreamReader(socketRight.getInputStream()));
+        String sideMsgRight = inRight.readLine();
+        if (!sideMsgRight.startsWith("SIDE:")) throw new IOException("Serveur plein ou erreur");
+        String sideRight = sideMsgRight.substring(5);
+
+        // Démarre un seul thread de réception (les deux sockets reçoivent le même état)
+        new Thread(() -> {
+            try {
+                String message;
+                while ((message = inLeft.readLine()) != null) {
+                    processServerMessage(message);
+                }
+            } catch (IOException e) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, "Connexion perdue avec le serveur");
+                });
+            }
+        }).start();
+
+        // Ajoute un thread pour écouter inRight aussi
+        new Thread(() -> {
+            try {
+                String message;
+                while ((message = inRight.readLine()) != null) {
+                    processServerMessage(message);
+                }
+            } catch (IOException e) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, "Connexion perdue avec le serveur (RIGHT)");
+                });
+            }
+        }).start();
+
+        // Envoie la config de colonnes sur les deux sockets
+        outLeft.println("COLS:" + topBoard.getCols());
+        outRight.println("COLS:" + topBoard.getCols());
+
+        connected = true;
+        connectButton.setEnabled(false);
+        ipField.setEnabled(false);
+        portField.setEnabled(false);
+        connectButton.setText("Connecté ✓");
+
+        requestFocusInWindow();
+
+        JOptionPane.showMessageDialog(this, "Mode local activé : 2 joueurs sur ce PC !\nFlèches = J1, S/D = J2");
+
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(this, "Erreur connexion mode local : " + ex.getMessage());
+    }
+}
 
     private void setupConnectionForm() {
         ipField = new JTextField("localhost", 15);
@@ -112,6 +192,24 @@ public class GameFrame extends JFrame {
         portField.addActionListener(connectAction);
 
         colsField.addActionListener(e -> updateColumns());
+
+        JCheckBox localModeBox = new JCheckBox("Mode local (2 joueurs sur ce PC)");
+        localModeBox.setBounds(10, 115, 250, 25);
+        gamePanel.add(localModeBox);
+
+        localModeBox.addActionListener(e -> {
+            localMode = localModeBox.isSelected();
+            if (localMode) {
+                ipField.setEnabled(false);
+                portField.setEnabled(false);
+                connectButton.setEnabled(false);
+                connectLocalPlayers();
+            } else {
+                ipField.setEnabled(true);
+                portField.setEnabled(true);
+                connectButton.setEnabled(true);
+            }
+        });
     }
 
     private void openVieConfigDialog() {
@@ -235,29 +333,56 @@ public class GameFrame extends JFrame {
     }
 
 private void setupKeyListeners() {
+    // Utilise un Set pour suivre les touches pressées
     addKeyListener(new KeyAdapter() {
         @Override
         public void keyPressed(KeyEvent e) {
-            if (!connected || mySide == null) return;
+            pressedKeys.add(e.getKeyCode());
+        }
+        @Override
+        public void keyReleased(KeyEvent e) {
+            pressedKeys.remove(e.getKeyCode());
+        }
+    });
+    setFocusable(true);
 
+    // Timer pour envoyer les commandes tant que les touches sont pressées
+    localKeyTimer = new Timer(30, evt -> {
+        if (localMode) {
+            // Joueur 1 (flèches) → LEFT
+            if (pressedKeys.contains(KeyEvent.VK_LEFT)) {
+                if (outLeft != null) outLeft.println("MOVE:LEFT");
+            }
+            if (pressedKeys.contains(KeyEvent.VK_RIGHT)) {
+                if (outLeft != null) outLeft.println("MOVE:RIGHT");
+            }
+            // Joueur 2 (S/D) → RIGHT
+            if (pressedKeys.contains(KeyEvent.VK_S)) {
+                if (outRight != null) outRight.println("MOVE:LEFT");
+            }
+            if (pressedKeys.contains(KeyEvent.VK_D)) {
+                if (outRight != null) outRight.println("MOVE:RIGHT");
+            }
+        } else {
+            if (!connected || mySide == null) return;
             if (mySide.equals("LEFT")) {
-                // Joueur 1 : touches fléchées
-                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                if (pressedKeys.contains(KeyEvent.VK_LEFT)) {
                     out.println("MOVE:LEFT");
-                } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                }
+                if (pressedKeys.contains(KeyEvent.VK_RIGHT)) {
                     out.println("MOVE:RIGHT");
                 }
             } else if (mySide.equals("RIGHT")) {
-                // Joueur 2 : touches S (gauche) et D (droite)
-                if (e.getKeyCode() == KeyEvent.VK_S) {
+                if (pressedKeys.contains(KeyEvent.VK_S)) {
                     out.println("MOVE:LEFT");
-                } else if (e.getKeyCode() == KeyEvent.VK_D) {
+                }
+                if (pressedKeys.contains(KeyEvent.VK_D)) {
                     out.println("MOVE:RIGHT");
                 }
             }
         }
     });
-    setFocusable(true);
+    localKeyTimer.start();
 }
 
     private void startReceivingThread() {
@@ -459,9 +584,9 @@ private void setupKeyListeners() {
             // System.out.println("Client - topPaddle X: " + topPaddle.getX() + ", Y: " + topPaddle.getY()
             //     + " | bottomPaddle X: " + bottomPaddle.getX() + ", Y: " + bottomPaddle.getY());
 
-            System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
-System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
-System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
+//             System.out.println("Client - Ball: x=" + ballX + ", y=" + ballY);
+// System.out.println("Client - topPaddle: x=" + topPaddle.getX() + ", y=" + (topBoardY + (2 * cellSize) + 25));
+// System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + (bottomBoardY - 30));
             // Fond beige clair
             g.setColor(new Color(245, 245, 220));
             g.fillRect(0, 0, getWidth(), getHeight());
@@ -562,15 +687,15 @@ System.out.println("Client - bottomPaddle: x=" + bottomPaddle.getX() + ", y=" + 
                 }
             }
             // Optionnel : sauvegarde locale (si tu veux garder un backup)
-            try (FileWriter fw = new FileWriter("config/vie.txt")) {
-                for (PieceType type : PieceType.values()) {
-                    fw.write(type.name() + "=" + type.getMaxHP() + "\n");
-                }
-                fw.flush();
-                JOptionPane.showMessageDialog(this, "Vies enregistrées !");
-            } catch (IOException ex) {
-                JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
-            }
+            // try (FileWriter fw = new FileWriter("config/vie.txt")) {
+            //     for (PieceType type : PieceType.values()) {
+            //         fw.write(type.name() + "=" + type.getMaxHP() + "\n");
+            //     }
+            //     fw.flush();
+            //     JOptionPane.showMessageDialog(this, "Vies enregistrées !");
+            // } catch (IOException ex) {
+            //     JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
+            // }
             dispose();
             GameFrame.this.requestFocus();
         }
