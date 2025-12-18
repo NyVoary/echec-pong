@@ -124,6 +124,22 @@ public class ClientHandler extends Thread {
                 gameEngine.broadcastState();
             }
         }
+        else if (command.startsWith("SET_CONFIG:")) {
+            // Format: SET_CONFIG:KEY:VALUE
+            String[] parts = command.split(":");
+            if (parts.length == 3) {
+                String key = parts[1];
+                String value = parts[2];
+                try {
+                    // Met à jour la base
+                    gameEngine.setGameConfigInEJB(key, value);
+                    gameEngine.loadConfigFromEJB(); // recharge la config pour tous
+                    gameEngine.broadcastState();
+                } catch (Exception e) {
+                    System.out.println("Erreur SET_CONFIG: " + e.getMessage());
+                }
+            }
+        }
     }
 
     public void sendMessage(String message) {

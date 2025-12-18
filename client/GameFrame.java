@@ -55,7 +55,11 @@ public class GameFrame extends JFrame {
     private Set<Integer> pressedKeys = new HashSet<>();
 private Timer localKeyTimer;
     
-
+private int progressBar = 0;
+private int progressBarMax = 10;
+private boolean superShotActive = false;
+private int superShotLeft = 0;
+private int superShotDamage = 3; // Ajoute cette ligne avec la valeur par défaut
     public GameFrame() {
         setTitle("Échec Pong - Client");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -552,8 +556,35 @@ private void setupKeyListeners() {
             // bottomBoard.initializeDefaultPieces(true, null);
             gamePanel.repaint();
         }
-
-        
+if (message.contains(";BAR:")) {
+    String[] barParts = message.split(";BAR:");
+    if (barParts.length > 1) {
+        String[] barAndRest = barParts[1].split(";", 2);
+        String barValue = barAndRest[0]; // ex: "7/10"
+        String[] vals = barValue.split("/");
+        if (vals.length == 2) {
+            try {
+                progressBar = Integer.parseInt(vals[0]);
+                progressBarMax = Integer.parseInt(vals[1]);
+            } catch (Exception ignored) {}
+        }
+    }
+}
+if (message.contains(";SUPER:")) {
+    String[] superParts = message.split(";SUPER:");
+    if (superParts.length > 1) {
+        String[] superAndRest = superParts[1].split(";", 2);
+        String[] vals = superAndRest[0].split(",");
+        if (vals.length == 2) {
+            superShotActive = "1".equals(vals[0]);
+            try {
+                superShotLeft = Integer.parseInt(vals[1]);
+                // Met à jour la variable locale pour le formulaire
+                superShotDamage = Math.max(superShotDamage, superShotLeft);
+            } catch (Exception ignored) {}
+        }
+    }
+}
     }
 
     class GamePanel extends JPanel {
@@ -627,6 +658,29 @@ private void setupKeyListeners() {
                        ballY - GameConfig.BALL_RADIUS,
                        GameConfig.BALL_RADIUS * 2,
                        GameConfig.BALL_RADIUS * 2);
+
+            // Affichage de la barre de progression dans l'espace blanc en haut à droite
+            int barWidth = 180;
+            int barHeight = 18;
+            int barX = getWidth() - barWidth - 30; // Décalé à droite
+            int barY = 20; // Dans la zone blanche
+
+            g.setColor(Color.LIGHT_GRAY);
+            g.fillRect(barX, barY, barWidth, barHeight);
+
+            int filled = (int) ((progressBar / (double) progressBarMax) * barWidth);
+            g.setColor(superShotActive ? Color.ORANGE : new Color(60, 180, 60));
+            g.fillRect(barX, barY, filled, barHeight);
+
+            g.setColor(Color.BLACK);
+            g.drawRect(barX, barY, barWidth, barHeight);
+
+            String barText = superShotActive
+                ? "SUPER TIR ! (" + superShotLeft + " dégats)"
+                : "Progression: " + progressBar + " / " + progressBarMax;
+            g.setFont(new Font("Arial", Font.BOLD, 13));
+            int textWidth = g.getFontMetrics().stringWidth(barText);
+            g.drawString(barText, barX + (barWidth - textWidth) / 2, barY + barHeight - 5);
         }
     }
 
@@ -634,27 +688,40 @@ private void setupKeyListeners() {
     class VieConfigDialog extends JDialog {
         private Map<PieceType, JTextField> fields = new HashMap<>();
 
-        public VieConfigDialog(Frame parent) {
-            super(parent, "Configurer les vies des pièces", true);
-            setLayout(new GridLayout(PieceType.values().length + 1, 2, 10, 5));
-            setSize(350, 250);
-            setLocationRelativeTo(parent);
+private JTextField progressBarMaxField;
+private JTextField superShotDamageField;
 
-            for (PieceType type : PieceType.values()) {
-                add(new JLabel(type.getDisplayName()));
-                JTextField tf = new JTextField(String.valueOf(type.getMaxHP()), 5);
-                fields.put(type, tf);
-                add(tf);
-            }
+public VieConfigDialog(Frame parent) {
+    super(parent, "Configurer les vies et capacités", true);
+    setLayout(new GridLayout(PieceType.values().length + 3, 2, 10, 5));
+    setSize(350, 300);
+    setLocationRelativeTo(parent);
 
-            JButton saveBtn = new JButton("Enregistrer");
-            saveBtn.addActionListener(e -> saveVieConfig());
-            add(saveBtn);
+    // Champs pour les pièces
+    for (PieceType type : PieceType.values()) {
+        add(new JLabel(type.getDisplayName()));
+        JTextField tf = new JTextField(String.valueOf(type.getMaxHP()), 5);
+        fields.put(type, tf);
+        add(tf);
+    }
 
-            JButton cancelBtn = new JButton("Annuler");
-            cancelBtn.addActionListener(e -> dispose());
-            add(cancelBtn);
-        }
+    // Champs pour la barre et le super tir
+    add(new JLabel("Barre progression max"));
+    progressBarMaxField = new JTextField(String.valueOf(progressBarMax), 5);
+    add(progressBarMaxField);
+
+    add(new JLabel("Dégât super tir"));
+    superShotDamageField = new JTextField(String.valueOf(superShotDamage), 5);
+    add(superShotDamageField);
+
+    JButton saveBtn = new JButton("Enregistrer");
+    saveBtn.addActionListener(e -> saveVieConfig());
+    add(saveBtn);
+
+    JButton cancelBtn = new JButton("Annuler");
+    cancelBtn.addActionListener(e -> dispose());
+    add(cancelBtn);
+}
 
         private void saveVieConfig() {
             Properties props = new Properties();
@@ -672,16 +739,41 @@ private void setupKeyListeners() {
                     return;
                 }
             }
-            // Optionnel : sauvegarde locale (si tu veux garder un backup)
-            // try (FileWriter fw = new FileWriter("config/vie.txt")) {
-            //     for (PieceType type : PieceType.values()) {
-            //         fw.write(type.name() + "=" + type.getMaxHP() + "\n");
-            //     }
-            //     fw.flush();
-            //     JOptionPane.showMessageDialog(this, "Vies enregistrées !");
-            // } catch (IOException ex) {
-            //     JOptionPane.showMessageDialog(this, "Erreur d'écriture dans vie.txt");
-            // }
+            // Valeurs pour la barre de progression et le super tir
+            try {
+                int newMax = Integer.parseInt(progressBarMaxField.getText().trim());
+                GameFrame.this.progressBarMax = newMax;
+                // Informe le serveur de la nouvelle valeur
+                if (GameFrame.this.out != null) {
+                    GameFrame.this.out.println("SET_PROGRESS_BAR_MAX:" + newMax);
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Valeur invalide pour la barre de progression");
+                return;
+            }
+            try {
+                int newDamage = Integer.parseInt(superShotDamageField.getText().trim());
+                GameFrame.this.superShotDamage = newDamage;
+                // Informe le serveur de la nouvelle valeur
+                if (GameFrame.this.out != null) {
+                    GameFrame.this.out.println("SET_SUPER_SHOT_DAMAGE:" + newDamage);
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Valeur invalide pour le dégât du super tir");
+                return;
+            }
+                try {
+                    int newBarMax = Integer.parseInt(progressBarMaxField.getText().trim());
+                    int newSuperDmg = Integer.parseInt(superShotDamageField.getText().trim());
+                    if (GameFrame.this.out != null) {
+                        GameFrame.this.out.println("SET_CONFIG:PROGRESS_BAR_MAX:" + newBarMax);
+                        GameFrame.this.out.println("SET_CONFIG:SUPER_SHOT_DAMAGE:" + newSuperDmg);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Valeur invalide pour la barre ou le super tir");
+                    return;
+                }
+
             dispose();
             GameFrame.this.requestFocus();
         }

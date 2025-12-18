@@ -1,1 +1,15 @@
 reo paramatre rehetra reo ampirimina anaty base de donnees, dia acces base lasa micro service ejb, comment faire ? donc plus de txt 
+
+
+
+alea 2:
+misy barre de progression kely ray pour 2 joueur (chaque fois mahavoa dia mitombo lay barre de progression) 
+misy capacite lay barre d rehefa 10 d lasa quand la balle touche le dommage sera 3 (configurable) par exemple, et puis la barre de progression revient a 0,
+une seule fois, on peut utiliser capacite ou non, enfaite il doit rebondir apres avoir toucher unn piece  que quand il a genre par exemple 
+genre si il y a un piece de 1 et derrier 2 et genre capacite 3, il ne rebondit pas au premier piece mais il faut qu'il inflige degats 3 la balle c'est la quel rebondit, tu comprends ? 
+et si il touche etremite alors plus de pouvoir
+
+il y a une barre de progression 1 pour les 2 joueur un seul, la barre de progression monte a chaque fois que la balle touche une piece,
+et genre si elle atteint sa capacite maximale (10, configurable) alors la balle infligera 3 degats (configurable),et la barre revient a 0 
+on ne peut utiliser sa une seule fois, par exemple si le degat de balle est 3 , il doit infliger 3 de degat c'est la que le pouvoir arrete, genre si 
+il y a piece avec 1 de vie, la balle arrive il sera mort la piece, mais elle aura alors inflgie 1 degat non pas 3 alors il doit encore infligger 2, mais si la balle touche extremite le pouvori est termine et la barre revient a 0 
