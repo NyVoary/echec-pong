@@ -518,11 +518,20 @@ private void setupKeyListeners() {
         }
         else if (message.startsWith("GAMEOVER:WINNER:")) {
             String winnerSide = message.substring("GAMEOVER:WINNER:".length());
+            String winnerLabel;
+            if ("LEFT".equals(winnerSide)) {
+                winnerLabel = "Joueur 2 (haut)";
+            } else if ("RIGHT".equals(winnerSide)) {
+                winnerLabel = "Joueur 1 (bas)";
+            } else {
+                winnerLabel = winnerSide;
+            }
+
             String msg;
             if (mySide != null && mySide.equals(winnerSide)) {
-                msg = "Félicitations ! Vous avez gagné !";
+                msg = "Félicitations ! Vous avez gagné !\n(" + winnerLabel + ")";
             } else {
-                msg = "Dommage, vous avez perdu.";
+                msg = "Dommage, vous avez perdu.\nLe gagnant est : " + winnerLabel;
             }
             JOptionPane.showMessageDialog(this, "Game Over\n" + msg, "Game Over", JOptionPane.INFORMATION_MESSAGE);
         }

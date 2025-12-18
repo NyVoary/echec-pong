@@ -330,7 +330,7 @@ public synchronized void addPlayer(String side, ClientHandler handler) {
         }
     }
 
-    public Player getWinnerIfKingDead() {
+public Player getWinnerIfKingDead() {
     boolean topKingAlive = false;
     boolean bottomKingAlive = false;
 
@@ -350,9 +350,17 @@ public synchronized void addPlayer(String side, ClientHandler handler) {
     }
 
     // Si le roi du haut est mort, le joueur du bas gagne
-    if (!topKingAlive && bottomPlayer != null) return bottomPlayer;
+    if (!topKingAlive) {
+        if (bottomPlayer != null) return bottomPlayer;
+        // Mode local : crée un "fake" Player pour le bas
+        if (localMode) return new Player("LOCAL_RIGHT", "RIGHT", null);
+    }
     // Si le roi du bas est mort, le joueur du haut gagne
-    if (!bottomKingAlive && topPlayer != null) return topPlayer;
+    if (!bottomKingAlive) {
+        if (topPlayer != null) return topPlayer;
+        // Mode local : crée un "fake" Player pour le haut
+        if (localMode) return new Player("LOCAL_LEFT", "LEFT", null);
+    }
 
     // Aucun gagnant pour l'instant
     return null;
