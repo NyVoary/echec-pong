@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: echecpong
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./ejb/script.sql:/docker-entrypoint-initdb.d/init.sql
+
+  wildfly:
+    build: .
+    image: echecpong-wildfly:latest
+    depends_on:
+      - db
+    environment:
+      # Adapter la datasource si besoin
+      POSTGRES_DB: echecpong
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mamaika77
+      DB_HOST: db
+    ports:
+      - "8080:8080"
+    # Optionnel : pour debug
+    # volumes:
+    #   - ./ejb/target/configservice-1.0-SNAPSHOT.jar:/opt/jboss/wildfly/standalone/deployments/configservice.jar
+
+volumes:
+  pgdata:

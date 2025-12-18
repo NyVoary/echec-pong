@@ -17,7 +17,7 @@ call mvn clean package
 cd ..
 
 REM === COPIE DU JAR EJB DANS WILDFLY ===
-copy /Y ejb\target\configservice-1.0-SNAPSHOT.jar "%WILDFLY_HOME%\standalone\deployments\configservice.jar"
+copy /Y ejb\target\configservice-1.0-SNAPSHOT.war "%WILDFLY_HOME%\standalone\deployments\configservice.war"
 
 echo.
 echo ========================================
