@@ -1,8 +1,12 @@
 package server;
-import java.io.*;
-import java.net.*;
-import common.PieceType;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+
 import common.GameConfig;
+import common.PieceType;
 
 public class ClientHandler extends Thread {
     private Socket socket;
@@ -55,7 +59,8 @@ public class ClientHandler extends Thread {
             configMsg.append("BOARD_X=").append(GameConfig.BOARD_X).append(",");
             configMsg.append("TOP_BOARD_Y=").append(GameConfig.TOP_BOARD_Y).append(",");
             configMsg.append("BOTTOM_BOARD_Y=").append(GameConfig.BOTTOM_BOARD_Y).append(",");
-            configMsg.append("CELL_SIZE=").append(GameConfig.CELL_SIZE);
+            configMsg.append("CELL_SIZE=").append(GameConfig.CELL_SIZE).append(",");
+            configMsg.append("PROGRESS_BAR_CAPACITY=").append(GameConfig.PROGRESS_BAR_CAPACITY);
             out.println(configMsg.toString());
 
             // Envoie les HP max de chaque type au client
@@ -89,8 +94,12 @@ public class ClientHandler extends Thread {
             gameEngine.movePaddle(playerSide, direction);
         } else if (command.startsWith("COLS:")) {
             int cols = Integer.parseInt(command.substring(5));
-            System.out.println("📊 Mise à jour colonnes: " + cols);
+            System.out.println("📊mise à jour colonnes: " + cols);
             gameEngine.setBoardCols(cols);
+        } else if (command.startsWith("PROGRESS_CAPACITY:")) {
+            int capacity = Integer.parseInt(command.substring("PROGRESS_CAPACITY:".length()));
+            System.out.println("📊 Mise à jour capacité barre: " + capacity);
+            gameEngine.setProgressBarCapacity(capacity);
         }
         else if (command.equals("RELOAD_HP")) {
             gameEngine.loadConfigFromEJB();

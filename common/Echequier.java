@@ -150,15 +150,54 @@ public class Echequier {
     /**
      * Fait rebondir la balle si elle touche une case contenant une pièce vivante.
      * Retourne true si collision, false sinon.
+     * Si la balle a un super pouvoir, elle peut tuer plusieurs pièces et ne rebondit pas.
      */
     public boolean bounceBallOnPiece(Ball ball) {
         boolean collision = false;
+        
+        // Si la balle a un super pouvoir, elle traverse les pièces
+        if (ball.hasSuperPower()) {
+            for (int row = 0; row < ROWS; row++) {
+                for (int col = 0; col < cols; col++) {
+                    Carre carre = cases[row][col];
+                    if (!carre.hasPiece()) continue;
+
+                    int caseX = carre.getX();
+                    int caseY = carre.getY();
+                    int ballX = ball.getX();
+                    int ballY = ball.getY();
+                    int r = ball.getRadius();
+
+                    if (ballX + r >= caseX && ballX - r <= caseX + cellWidth &&
+                        ballY + r >= caseY && ballY - r <= caseY + cellHeight) {
+                        
+                        ChessPiece piece = carre.getPiece();
+                        int pieceHP = piece.getCurrentHP();
+                        
+                        // La balle inflige ses dégâts de super pouvoir
+                        piece.takeDamage(ball.getSuperPowerDamage());
+                        
+                        // Réduit le pouvoir de la balle du HP du pion
+                        ball.reduceSuperPowerDamage(pieceHP);
+                        
+                        collision = true;
+                        
+                        // Si le pouvoir est épuisé, arrêter
+                        if (!ball.hasSuperPower()) {
+                            break;
+                        }
+                    }
+                }
+                if (!ball.hasSuperPower()) break;
+            }
+            // Pas de rebond en mode super pouvoir
+            return collision;
+        }
+        
+        // Mode normal : rebond et 1 dégât
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < cols; col++) {
                 Carre carre = cases[row][col];
-                System.out.println("Case (" + row + "," + col + ") hasPiece=" + carre.hasPiece() +
-                    " | caseX=" + carre.getX() + ", caseY=" + carre.getY() +
-                    " | Ball: x=" + ball.getX() + ", y=" + ball.getY());
                 if (!carre.hasPiece()) continue;
 
                 int caseX = carre.getX();
@@ -171,7 +210,7 @@ public class Echequier {
                     ballY + r >= caseY && ballY - r <= caseY + cellHeight) {
                     ball.bounce(caseX, caseY, cellWidth, cellHeight);
                     ChessPiece piece = carre.getPiece();
-                    piece.takeDamage(1); // Par exemple, 10 PV par rebond
+                    piece.takeDamage(1); // 1 PV par rebond en mode normal
                     collision = true;
                 }
             }

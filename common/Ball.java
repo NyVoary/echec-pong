@@ -13,6 +13,10 @@ public class Ball {
     private int minY;
     private int maxY;
     
+    // Super pouvoir
+    private boolean hasSuperPower = false;
+    private int superPowerDamage = 0; // Dégâts restants du super pouvoir
+    
     public Ball(double x, double y, int radius, int minX, int maxX, int minY, int maxY) {
         this.x = x;
         this.y = y;
@@ -147,8 +151,30 @@ public class Ball {
     public void setSpeedX(double speedX) { this.speedX = speedX; }
     public void setSpeedY(double speedY) { this.speedY = speedY; }
     
+    // === SUPER POUVOIR ===
+    public boolean hasSuperPower() { return hasSuperPower; }
+    public int getSuperPowerDamage() { return superPowerDamage; }
+    
+    public void activateSuperPower(int damage) {
+        this.hasSuperPower = true;
+        this.superPowerDamage = damage;
+    }
+    
+    public void deactivateSuperPower() {
+        this.hasSuperPower = false;
+        this.superPowerDamage = 0;
+    }
+    
+    public void reduceSuperPowerDamage(int amount) {
+        this.superPowerDamage -= amount;
+        if (this.superPowerDamage <= 0) {
+            deactivateSuperPower();
+        }
+    }
+    
     @Override
     public String toString() {
-        return String.format("Ball{x=%.1f, y=%.1f, vx=%.1f, vy=%.1f}", x, y, speedX, speedY);
+        return String.format("Ball{x=%.1f, y=%.1f, vx=%.1f, vy=%.1f, superPower=%b, damage=%d}", 
+            x, y, speedX, speedY, hasSuperPower, superPowerDamage);
     }
 }

@@ -29,6 +29,10 @@ public class GameEngine {
     public Player bottomPlayer;   // Ajouté
     private int boardCols = 8;
     
+    // Barre de progression partagée
+    private int progressBarCurrent = 0;  // Progression actuelle
+    private int progressBarCapacity = 10; // Capacité max (configurable)
+    
     private boolean gameRunning = false;
     private Thread gameLoopThread;
 
@@ -126,6 +130,14 @@ public class GameEngine {
             common.GameConfig.TOP_BOARD_Y        = Integer.parseInt(config.get("TOP_BOARD_Y"));
             common.GameConfig.BOTTOM_BOARD_Y     = Integer.parseInt(config.get("BOTTOM_BOARD_Y"));
             common.GameConfig.CELL_SIZE          = Integer.parseInt(config.get("CELL_SIZE"));
+            
+            // Config barre de progression
+            if (config.containsKey("PROGRESS_BAR_CAPACITY")) {
+                common.GameConfig.PROGRESS_BAR_CAPACITY = Integer.parseInt(config.get("PROGRESS_BAR_CAPACITY"));
+            } else {
+                common.GameConfig.PROGRESS_BAR_CAPACITY = 10; // Valeur par défaut
+            }
+            progressBarCapacity = common.GameConfig.PROGRESS_BAR_CAPACITY;
 
             // Applique les HP aux pièces via PieceType
             common.PieceType.applyHPFromMap(hpMap);
@@ -236,8 +248,32 @@ public class GameEngine {
             ball.bounce(topPaddle.getX(), topPaddle.getY(), topPaddle.getWidth(), topPaddle.getHeight());
             ball.bounce(bottomPaddle.getX(), bottomPaddle.getY(), bottomPaddle.getWidth(), bottomPaddle.getHeight());
 
-            topBoard.bounceBallOnPiece(ball);
-            bottomBoard.bounceBallOnPiece(ball);
+            // Vérifier collision avec les pièces et augmenter la barre
+            boolean hitTopPiece = topBoard.bounceBallOnPiece(ball);
+            boolean hitBottomPiece = bottomBoard.bounceBallOnPiece(ball);
+            
+            if (hitTopPiece || hitBottomPiece) {
+                // Augmenter la barre de progression
+                progressBarCurrent++;
+                
+                // Si la barre est pleine, activer le super pouvoir
+                if (progressBarCurrent >= progressBarCapacity && !ball.hasSuperPower()) {
+                    ball.activateSuperPower(3); // Pouvoir de -3
+                    progressBarCurrent = 0; // Reset la barre
+                    System.out.println("🌟 SUPER POUVOIR ACTIVÉ ! Dégâts: 3");
+                }
+            }
+            
+            // Si la balle touche le mur arrière en mode super pouvoir, désactiver
+            if (ball.hasSuperPower()) {
+                // Vérifier si la balle a atteint le mur du haut ou du bas
+                if (ball.getY() - ball.getRadius() <= GameConfig.GAME_AREA_MIN_Y || 
+                    ball.getY() + ball.getRadius() >= GameConfig.GAME_AREA_MAX_Y) {
+                    ball.deactivateSuperPower();
+                    progressBarCurrent = 0; // Reset la barre
+                    System.out.println("❌ Super pouvoir perdu (mur touché)");
+                }
+            }
                 
         // Vérifier si la balle est sortie
         if (ball.isOutTop()) {
@@ -276,6 +312,8 @@ public class GameEngine {
 
     private void resetBall() {
         ball.reset(GameConfig.BALL_START_X, GameConfig.BALL_START_Y);
+        ball.deactivateSuperPower(); // Désactiver le super pouvoir
+        progressBarCurrent = 0; // Reset la barre
     }
 
     // === MOUVEMENT DES RAQUETTES ===
@@ -306,6 +344,22 @@ public class GameEngine {
 
         broadcastCols();
         broadcastState();
+    }
+    
+    // === BARRE DE PROGRESSION ===
+    public synchronized void setProgressBarCapacity(int capacity) {
+        this.progressBarCapacity = capacity;
+        GameConfig.PROGRESS_BAR_CAPACITY = capacity;
+        progressBarCurrent = 0; // Reset
+        broadcastProgressBarCapacity();
+        broadcastState();
+    }
+    
+    public synchronized void broadcastProgressBarCapacity() {
+        String message = "PROGRESS_CAPACITY:" + progressBarCapacity;
+        for (ClientHandler client : clients) {
+            client.sendMessage(message);
+        }
     }
 
     public synchronized void broadcastCols() {
@@ -358,6 +412,13 @@ public String getGameState() {
     sb.append(bottomPaddle.getX()).append(",");
     sb.append(ball.getX()).append(",");
     sb.append(ball.getY());
+    
+    // Ajoute l'état de la barre de progression et du super pouvoir
+    sb.append(";PROGRESS:");
+    sb.append(progressBarCurrent).append(",");
+    sb.append(progressBarCapacity).append(",");
+    sb.append(ball.hasSuperPower() ? "1" : "0").append(",");
+    sb.append(ball.getSuperPowerDamage());
 
     // Ajoute l'état des pièces
     sb.append(";PIECES:");
