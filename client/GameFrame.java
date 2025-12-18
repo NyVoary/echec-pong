@@ -564,7 +564,8 @@ private void setupFocusManagement() {
                 }
                 }
             }
-            gamePanel.repaint();
+            // (alea) Met à jour l'affichage de la barre de progression
+            gamePanel.repaint(); 
         } else if (message.startsWith("COLS:")) {
             int cols = Integer.parseInt(message.substring(5));
             topBoard.setCols(cols);

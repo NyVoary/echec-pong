@@ -344,11 +344,11 @@ public class GameEngine {
         broadcastState();
     }
     
-    // === BARRE DE PROGRESSION ===
+    // === BARRE DE PROGRESSION === (alea)
     public synchronized void setProgressBarCapacity(int capacity) {
         this.progressBarCapacity = capacity;
         GameConfig.PROGRESS_BAR_CAPACITY = capacity;
-        progressBarCurrent = 0; // Reset
+        progressBarCurrent = 0; // averina 0
         broadcastProgressBarCapacity();
         broadcastState();
     }

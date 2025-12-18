@@ -32,6 +32,7 @@ INSERT INTO game_config VALUES
 ('TOP_BOARD_Y', '145'),
 ('BOTTOM_BOARD_Y', '505'),
 ('CELL_SIZE', '60'),
+-- bare de progression (alea) par defaut 10 jusqu'a modification
 ('PROGRESS_BAR_CAPACITY', '10');
 
 -- Table des points de vie des pièces

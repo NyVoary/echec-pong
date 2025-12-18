@@ -88,6 +88,7 @@ public class ClientHandler extends Thread {
         }
     }
 
+    // alea eo @ PROGRESS_CAPACITY
     private void processCommand(String command) {
         if (command.startsWith("MOVE:")) {
             String direction = command.substring(5);
@@ -96,7 +97,7 @@ public class ClientHandler extends Thread {
             int cols = Integer.parseInt(command.substring(5));
             System.out.println("📊mise à jour colonnes: " + cols);
             gameEngine.setBoardCols(cols);
-        } else if (command.startsWith("PROGRESS_CAPACITY:")) {
+        } else if (command.startsWith("PROGRESS_CAPACITY:")) { 
             int capacity = Integer.parseInt(command.substring("PROGRESS_CAPACITY:".length()));
             System.out.println("📊 Mise à jour capacité barre: " + capacity);
             gameEngine.setProgressBarCapacity(capacity);
